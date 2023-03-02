@@ -5,6 +5,7 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
 
 const PRICE = ethers.utils.parseEther("0.01");
 const INTERVAL = 30;
+const AVAILABLE_EDITIONS = 5;
 
 !developmentChains.includes(network.name)
   ? describe.skip()
@@ -48,14 +49,15 @@ const INTERVAL = 30;
     })
 
     describe("listItem", () => {
-      it("reverts if the sender is not the owner", async () => {
+      it("reverts if the sender is not the creator", async () => {
         await expect(marketplace.connect(user).listItem(
           mainCollection.address,
           tokenId,
           PRICE,
           charity.address,
           tokenUri,
-          subCollectionId
+          subCollectionId,
+          AVAILABLE_EDITIONS
         )).to.be.revertedWithCustomError(
           marketplace,
           "NftMarketplace__NotCreator"
@@ -69,7 +71,8 @@ const INTERVAL = 30;
           PRICE,
           charity.address,
           tokenUri,
-          subCollectionId
+          subCollectionId,
+          AVAILABLE_EDITIONS
         );
 
         const listTxReceipt = await listTx.wait(1);
@@ -88,6 +91,42 @@ const INTERVAL = 30;
         )
       });
 
+      it("reverts if there are no available editions", async () => {
+        const listTx = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          1
+        );
+        const listTxReceipt = await listTx.wait(1);
+        const argsList = listTxReceipt.events[0].args;
+
+        const buyTx = await marketplace.connect(user).buyItem(
+          mainCollection.address,
+          argsList.tokenId,
+          charity.address,
+          tokenUri,
+          { value: PRICE }
+        );
+        const buyTxReceipt = await buyTx.wait(1);
+        const buyArgsList = buyTxReceipt.events[3].args;
+
+        await expect(marketplace.connect(creator).buyItem(
+          mainCollection.address,
+          buyArgsList.tokenId,
+          charity.address,
+          tokenUri,
+          { value: PRICE }
+        )).to.be.revertedWithCustomError(
+          marketplace,
+          "NftMarketplace__ItemNotAvailable"
+        );
+      })
+
+
       it("it reverts when value insufficient, it buys an item and emits the event", async () => {
 
         const charityInitialBalance = await ethers.provider.getBalance(charity.address);
@@ -99,7 +138,8 @@ const INTERVAL = 30;
           PRICE,
           charity.address,
           tokenUri,
-          subCollectionId
+          subCollectionId,
+          AVAILABLE_EDITIONS
         );
         const listTxReceipt = await listTx.wait(1);
 
@@ -159,7 +199,8 @@ const INTERVAL = 30;
           PRICE,
           charity.address,
           tokenUri,
-          subCollectionId
+          subCollectionId,
+          AVAILABLE_EDITIONS
         );
         await listTx.wait(1);
       })
@@ -185,7 +226,8 @@ const INTERVAL = 30;
           PRICE,
           charity.address,
           tokenUri,
-          subCollectionId
+          subCollectionId,
+          AVAILABLE_EDITIONS
         );
         await listTx.wait(1);
       })
@@ -412,6 +454,74 @@ const INTERVAL = 30;
             resolve();
           })
         });
+      })
+    })
+
+    describe("checkForOwner", async () => {
+      it("checks for a unique item to be owned by a user", async () => {
+        const listTx_1 = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS
+        );
+        const listTxReceipt_1 = await listTx_1.wait(1);
+        const argsList_1 = listTxReceipt_1.events[0].args;
+
+        const listTx_2 = await marketplace.listItem(
+          mainCollection.address,
+          tokenId + 1,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          (AVAILABLE_EDITIONS - 2)
+        );
+        const listTxReceipt_2 = await listTx_2.wait(1);
+        const argsList_2 = listTxReceipt_2.events[0].args;
+
+        const buyTx_1 = await marketplace.connect(user).buyItem(
+          mainCollection.address,
+          argsList_1.tokenId,
+          charity.address,
+          tokenUri,
+          { value: PRICE }
+        );
+        const buyTxReceipt_1 = await buyTx_1.wait(1);
+        const buyArgsList_1 = buyTxReceipt_1.events[3].args;
+
+        const collectionItem_1 = await marketplace.getListing(mainCollection.address, buyArgsList_1.tokenId);
+
+        const isOwner_false = await marketplace.checkOwnedByUser(
+          collectionItem_1.uniqueListingId,
+          mainCollection.address,
+          creator.address
+        );
+
+        assert(!isOwner_false);
+
+        const buyTx_2 = await marketplace.connect(user).buyItem(
+          mainCollection.address,
+          argsList_2.tokenId,
+          charity.address,
+          tokenUri,
+          { value: PRICE }
+        );
+        const buyTxReceipt_2 = await buyTx_2.wait(1);
+        const buyArgsList_2 = buyTxReceipt_2.events[3].args;
+
+        const collectionItem_2 = await marketplace.getListing(mainCollection.address, buyArgsList_2.tokenId);
+
+        const isOwner_true = await marketplace.checkOwnedByUser(
+          collectionItem_2.uniqueListingId,
+          mainCollection.address,
+          user.address
+        );
+
+        assert(isOwner_true);
       })
     })
   })

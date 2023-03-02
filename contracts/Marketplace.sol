@@ -22,15 +22,18 @@ error NftMarketplace__PriceNotMet(
 error NftMarketplace__NoProceeds();
 error NftMarketplace__TransferFailed();
 error NftMarketplace__NotCreator();
+error NftMarketplace__ItemNotAvailable();
 
 contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   // Type declarations
   struct Listing {
+    uint256 uniqueListingId;
     address seller;
     uint256 price;
     address charityAddress;
     address creator;
     uint256 subcollectionId;
+    uint256 availableEditions;
   }
 
   enum AuctionState {
@@ -108,6 +111,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   mapping(address => uint256) public s_proceeds;
   Auction[] public s_auctions;
   mapping(address => bool) public s_creators;
+  uint256 private s_listTokenCounter = 0;
 
   // modifiers
 
@@ -155,19 +159,24 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 price,
     address charityAddress,
     string memory tokenUri,
-    uint256 subCollectionId
+    uint256 subCollectionId,
+    uint256 availableEditions
   ) external notListed(nftAddress, tokenId, msg.sender) isCreator(msg.sender) {
     if (price <= 0) {
       revert NftMarketplace__PriceMustBeAboveZero();
     }
 
     s_listings[nftAddress][tokenId] = Listing(
+      s_listTokenCounter,
       msg.sender,
       price,
       charityAddress,
       msg.sender,
-      subCollectionId
+      subCollectionId,
+      availableEditions
     );
+
+    s_listTokenCounter += 1;
 
     emit ItemListed(
       msg.sender,
@@ -190,6 +199,10 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       revert NftMarketplace__PriceNotMet(nftAddress, tokenId, listedItem.price);
     }
 
+    if (listedItem.availableEditions <= 0) {
+      revert NftMarketplace__ItemNotAvailable();
+    }
+
     uint256 subcollectionId = MainCollection(nftAddress)
       .getSubcollectionOfToken(tokenId);
 
@@ -206,7 +219,11 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 charityFunds = ((msg.value) * 5) / 10;
     uint256 sellerFunds = ((msg.value) * 4) / 10;
 
-    delete (s_listings[nftAddress][tokenId]);
+    uint256 newTokenId = getListTokenCounter();
+
+    s_listings[nftAddress][newTokenId] = s_listings[nftAddress][tokenId];
+    s_listings[nftAddress][newTokenId].availableEditions -= 1;
+    s_listTokenCounter += 1;
 
     s_proceeds[listedItem.seller] = s_proceeds[listedItem.seller] + sellerFunds;
 
@@ -218,7 +235,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       revert NftMarketplace__TransferFailed();
     }
 
-    emit ItemBought(msg.sender, nftAddress, tokenId, listedItem.price);
+    emit ItemBought(msg.sender, nftAddress, newTokenId, listedItem.price);
   }
 
   function cancelItem(
@@ -433,5 +450,30 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   function getAuctionState(uint256 index) external view returns (AuctionState) {
     return s_auctions[index].state;
+  }
+
+  function getListTokenCounter() public view returns (uint256) {
+    return s_listTokenCounter;
+  }
+
+  function checkOwnedByUser(
+    uint256 uniqueItemId,
+    address nftAddress,
+    address ownerAddress
+  ) public view returns (bool isOwned) {
+    for (uint i = 0; i < s_listTokenCounter; i++) {
+      Listing memory listing = s_listings[nftAddress][i];
+      try IERC721(nftAddress).ownerOf(i) returns (address /*owner*/) {
+        if (
+          listing.uniqueListingId == uniqueItemId &&
+          IERC721(nftAddress).ownerOf(i) == ownerAddress
+        ) {
+          return true;
+        }
+      } catch (bytes memory /*lowLevelData*/) {
+        continue;
+      }
+    }
+    return false;
   }
 }
