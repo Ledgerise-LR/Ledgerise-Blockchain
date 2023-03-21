@@ -11,6 +11,7 @@ const GOERLI_RPC_URL = process.env.GOERLI_RPC_URL || "https://eth-goerli";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "0xkey";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "key";
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "key";
+const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || "key";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {

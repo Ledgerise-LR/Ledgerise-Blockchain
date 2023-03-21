@@ -62,7 +62,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 indexed tokenId,
     address charityAddress,
     uint256 price,
-    string tokenUri
+    string tokenUri,
+    uint256 subcollectionId
   );
 
   event ItemBought(
@@ -184,7 +185,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       tokenId,
       charityAddress,
       price,
-      tokenUri
+      tokenUri,
+      subCollectionId
     );
   }
 
@@ -206,24 +208,12 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 subcollectionId = MainCollection(nftAddress)
       .getSubcollectionOfToken(tokenId);
 
-    address creator = getListing(nftAddress, tokenId).creator;
+    MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, msg.sender);
 
-    MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, creator);
+    uint256 charityFunds = ((msg.value) * 55) / 100;
+    uint256 sellerFunds = ((msg.value) * 40) / 100;
 
-    MainCollection(nftAddress).safeTransferFrom(
-      listedItem.seller,
-      msg.sender,
-      tokenId
-    );
-
-    uint256 charityFunds = ((msg.value) * 5) / 10;
-    uint256 sellerFunds = ((msg.value) * 4) / 10;
-
-    uint256 newTokenId = getListTokenCounter();
-
-    s_listings[nftAddress][newTokenId] = s_listings[nftAddress][tokenId];
-    s_listings[nftAddress][newTokenId].availableEditions -= 1;
-    s_listTokenCounter += 1;
+    s_listings[nftAddress][tokenId].availableEditions -= 1;
 
     s_proceeds[listedItem.seller] = s_proceeds[listedItem.seller] + sellerFunds;
 
@@ -235,7 +225,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       revert NftMarketplace__TransferFailed();
     }
 
-    emit ItemBought(msg.sender, nftAddress, newTokenId, listedItem.price);
+    emit ItemBought(msg.sender, nftAddress, tokenId, listedItem.price);
   }
 
   function cancelItem(
@@ -265,13 +255,15 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       s_listings[nftAddress][tokenId].charityAddress = charityAddress;
     }
     s_listings[nftAddress][tokenId].price = price;
+    uint256 subcollectionId = s_listings[nftAddress][tokenId].subcollectionId;
     emit ItemListed(
       msg.sender,
       nftAddress,
       tokenId,
       charityAddress,
       price,
-      tokenUri
+      tokenUri,
+      subcollectionId
     );
   }
 
@@ -385,8 +377,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     Auction memory endedAuction = s_auctions[auctionIndex];
     delete s_auctions[auctionIndex];
 
-    uint256 sellerFunds = (endedAuction.currentBidding * 4) / 10;
-    uint256 charityFunds = (endedAuction.currentBidding * 5) / 10;
+    uint256 sellerFunds = (endedAuction.currentBidding * 40) / 100;
+    uint256 charityFunds = (endedAuction.currentBidding * 55) / 100;
 
     s_proceeds[endedAuction.seller] += sellerFunds;
 

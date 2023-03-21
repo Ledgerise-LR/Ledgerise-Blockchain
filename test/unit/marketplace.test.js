@@ -112,7 +112,7 @@ const AVAILABLE_EDITIONS = 5;
           { value: PRICE }
         );
         const buyTxReceipt = await buyTx.wait(1);
-        const buyArgsList = buyTxReceipt.events[3].args;
+        const buyArgsList = buyTxReceipt.events[2].args;
 
         await expect(marketplace.connect(creator).buyItem(
           mainCollection.address,
@@ -156,8 +156,8 @@ const AVAILABLE_EDITIONS = 5;
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__PriceNotMet");
 
 
-        const charityFunds = PRICE * 5 / 10;
-        const sellerFunds = PRICE * 4 / 10;
+        const charityFunds = PRICE * 55 / 100;
+        const sellerFunds = PRICE * 40 / 100;
 
         const buyTx = await marketplace.connect(user).buyItem(
           mainCollection.address,
@@ -169,7 +169,7 @@ const AVAILABLE_EDITIONS = 5;
         const buyTxReceipt = await buyTx.wait(1);
         const { gasUsed: gasUsedBuy, effectiveGasPrice: effectiveGasPriceBuy } = buyTxReceipt;
         const gasCostBuy = gasUsedBuy.mul(effectiveGasPriceBuy);
-        const args = buyTxReceipt.events[3].args;
+        const args = buyTxReceipt.events[2].args;
 
         const withdrawTx = await marketplace.withdrawProceeds();
         const withdrawTxReceipt = await withdrawTx.wait(1);
@@ -491,7 +491,7 @@ const AVAILABLE_EDITIONS = 5;
           { value: PRICE }
         );
         const buyTxReceipt_1 = await buyTx_1.wait(1);
-        const buyArgsList_1 = buyTxReceipt_1.events[3].args;
+        const buyArgsList_1 = buyTxReceipt_1.events[2].args;
 
         const collectionItem_1 = await marketplace.getListing(mainCollection.address, buyArgsList_1.tokenId);
 
@@ -511,7 +511,7 @@ const AVAILABLE_EDITIONS = 5;
           { value: PRICE }
         );
         const buyTxReceipt_2 = await buyTx_2.wait(1);
-        const buyArgsList_2 = buyTxReceipt_2.events[3].args;
+        const buyArgsList_2 = buyTxReceipt_2.events[2].args;
 
         const collectionItem_2 = await marketplace.getListing(mainCollection.address, buyArgsList_2.tokenId);
 
