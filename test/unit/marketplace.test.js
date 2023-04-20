@@ -145,6 +145,7 @@ const AVAILABLE_EDITIONS = 5;
 
         const { gasUsed: gasUsedList, effectiveGasPrice: effectiveGasPriceList } = listTxReceipt;
         const gasCostList = gasUsedList.mul(effectiveGasPriceList);
+        console.log("Gas cost list: " + ethers.utils.formatEther(gasCostList));
         const argsList = listTxReceipt.events[0].args;
 
         await expect(marketplace.connect(user).buyItem(
@@ -156,8 +157,8 @@ const AVAILABLE_EDITIONS = 5;
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__PriceNotMet");
 
 
-        const charityFunds = PRICE * 55 / 100;
-        const sellerFunds = PRICE * 40 / 100;
+        const charityFunds = PRICE * 70 / 100;
+        const sellerFunds = PRICE * 20 / 100;
 
         const buyTx = await marketplace.connect(user).buyItem(
           mainCollection.address,
@@ -169,6 +170,7 @@ const AVAILABLE_EDITIONS = 5;
         const buyTxReceipt = await buyTx.wait(1);
         const { gasUsed: gasUsedBuy, effectiveGasPrice: effectiveGasPriceBuy } = buyTxReceipt;
         const gasCostBuy = gasUsedBuy.mul(effectiveGasPriceBuy);
+        console.log("Gas cost for buy: " + ethers.utils.formatEther(gasCostBuy.toString(), "ether"))
         const args = buyTxReceipt.events[2].args;
 
         const withdrawTx = await marketplace.withdrawProceeds();

@@ -70,7 +70,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address indexed buyer,
     address indexed nftAddress,
     uint256 indexed tokenId,
-    uint256 price
+    uint256 price,
+    uint256 openseaTokenId
   );
 
   event ItemCanceled(
@@ -210,8 +211,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, msg.sender);
 
-    uint256 charityFunds = ((msg.value) * 55) / 100;
-    uint256 sellerFunds = ((msg.value) * 40) / 100;
+    uint256 charityFunds = ((msg.value) * 70) / 100;
+    uint256 sellerFunds = ((msg.value) * 20) / 100;
 
     s_listings[nftAddress][tokenId].availableEditions -= 1;
 
@@ -225,7 +226,15 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       revert NftMarketplace__TransferFailed();
     }
 
-    emit ItemBought(msg.sender, nftAddress, tokenId, listedItem.price);
+    uint256 openseaTokenId = MainCollection(nftAddress).getTokenCounter();
+
+    emit ItemBought(
+      msg.sender,
+      nftAddress,
+      tokenId,
+      listedItem.price,
+      openseaTokenId
+    );
   }
 
   function cancelItem(
@@ -377,8 +386,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     Auction memory endedAuction = s_auctions[auctionIndex];
     delete s_auctions[auctionIndex];
 
-    uint256 sellerFunds = (endedAuction.currentBidding * 40) / 100;
-    uint256 charityFunds = (endedAuction.currentBidding * 55) / 100;
+    uint256 sellerFunds = (endedAuction.currentBidding * 25) / 100;
+    uint256 charityFunds = (endedAuction.currentBidding * 65) / 100;
 
     s_proceeds[endedAuction.seller] += sellerFunds;
 
