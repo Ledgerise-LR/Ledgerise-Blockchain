@@ -20,7 +20,8 @@ module.exports = {
   defaultNetwork: "hardhat",
   etherscan: {
     apiKey: {
-      goerli: ETHERSCAN_API_KEY
+      goerli: ETHERSCAN_API_KEY,
+      sepolia: ETHERSCAN_API_KEY
     }
   },
   namedAccounts: {

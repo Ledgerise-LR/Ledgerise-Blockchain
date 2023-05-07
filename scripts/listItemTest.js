@@ -6,7 +6,7 @@ const AVAILABLE_EDITIONS = 5;
 
 const listItem = async () => {
   const deployer = (await getNamedAccounts()).deployer;
-  const marketplace = await ethers.getContract("Marketplace")
+  const marketplace = await ethers.getContract("Marketplace");
   const mainCollection = await ethers.getContract("MainCollection");
 
   const charity = "0x46000a9B2df36244E1671C0a5714720aaB9e3D13";
@@ -18,7 +18,7 @@ const listItem = async () => {
   await addCreatorTx_2.wait(1);
 
   const createSubcollectionTx = await mainCollection.createSubcollection(
-    "Türkiye Tek Yürek",
+    "No Hunger For Africa",
     charity,
     ["background", "category"]
   );

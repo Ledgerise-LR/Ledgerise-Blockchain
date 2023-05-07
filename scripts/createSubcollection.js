@@ -8,7 +8,7 @@ const createSubcollection = async () => {
   const deployer = (await getNamedAccounts()).deployer;
   const chainId = network.config.chainId;
 
-  const collectionName = "Help Turkey";
+  const collectionName = "No Hunger In Africa";
   const charityAddress = "0x9905a159Ed7b24c9a6Fe637cCF40653592224596";
   const properties = ["background", "category"];
 
