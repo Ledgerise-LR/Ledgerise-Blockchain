@@ -23,6 +23,8 @@ error NftMarketplace__NoProceeds();
 error NftMarketplace__TransferFailed();
 error NftMarketplace__NotCreator();
 error NftMarketplace__ItemNotAvailable();
+error NftMarketplace__DecimalsIncorrect();
+error NftMarketplace__LocationFormatIncorrect();
 
 contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   // Type declarations
@@ -34,6 +36,20 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address creator;
     uint256 subcollectionId;
     uint256 availableEditions;
+  }
+
+  struct Location {
+    uint256 latitude;
+    uint256 longitude;
+    uint256 decimals;
+  }
+
+  struct RealItemHistory {
+    string key;
+    address buyer;
+    string date;
+    uint256 openseaTokenId;
+    Location location;
   }
 
   enum AuctionState {
@@ -63,7 +79,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address charityAddress,
     uint256 price,
     string tokenUri,
-    uint256 subcollectionId
+    uint256 subcollectionId,
+    uint256 availableEditions
   );
 
   event ItemBought(
@@ -108,9 +125,12 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   event CreatorAdded(address indexed creatorAddress);
 
+  event RealItemHistorySaved(address nftAddress, uint256 tokenId);
+
   // NFT variables
   mapping(address => mapping(uint256 => Listing)) public s_listings;
   mapping(address => uint256) public s_proceeds;
+  mapping(address => mapping(uint256 => RealItemHistory[])) s_realItemHistory;
   Auction[] public s_auctions;
   mapping(address => bool) public s_creators;
   uint256 private s_listTokenCounter = 0;
@@ -187,7 +207,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       charityAddress,
       price,
       tokenUri,
-      subCollectionId
+      subCollectionId,
+      availableEditions
     );
   }
 
@@ -264,7 +285,11 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       s_listings[nftAddress][tokenId].charityAddress = charityAddress;
     }
     s_listings[nftAddress][tokenId].price = price;
+
     uint256 subcollectionId = s_listings[nftAddress][tokenId].subcollectionId;
+    uint256 availableEditions = s_listings[nftAddress][tokenId]
+      .availableEditions;
+
     emit ItemListed(
       msg.sender,
       nftAddress,
@@ -272,7 +297,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       charityAddress,
       price,
       tokenUri,
-      subcollectionId
+      subcollectionId,
+      availableEditions
     );
   }
 
@@ -419,9 +445,59 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     );
   }
 
+  function getNumOfDigits(uint256 num) internal pure returns (uint256) {
+    uint8 i = 0;
+    while (num >= 1) {
+      num /= 10;
+      i++;
+    }
+
+    return i;
+  }
+
+  function saveRealItemHistory(
+    address nftAddress,
+    uint256 tokenId,
+    string memory key,
+    address buyer,
+    string memory date,
+    uint256 openseaTokenId,
+    uint256 latitude,
+    uint256 longitude,
+    uint256 decimals
+  ) external onlyOwner {
+    Location memory location = Location(latitude, longitude, decimals);
+
+    if (decimals != 3) {
+      revert NftMarketplace__DecimalsIncorrect();
+    }
+
+    if (
+      getNumOfDigits(latitude) != 4 &&
+      getNumOfDigits(latitude) != 5 &&
+      getNumOfDigits(longitude) != 4 &&
+      getNumOfDigits(longitude) != 5
+    ) {
+      revert NftMarketplace__LocationFormatIncorrect();
+    }
+
+    s_realItemHistory[nftAddress][tokenId].push(
+      RealItemHistory(key, buyer, date, openseaTokenId, location)
+    );
+
+    emit RealItemHistorySaved(nftAddress, tokenId);
+  }
+
   function addCreator(address creatorAddress) external onlyOwner {
     s_creators[creatorAddress] = true;
     emit CreatorAdded(creatorAddress);
+  }
+
+  function getRealItemHistory(
+    address nftAddress,
+    uint256 tokenId
+  ) external view onlyOwner returns (RealItemHistory[] memory) {
+    return s_realItemHistory[nftAddress][tokenId];
   }
 
   function getListing(

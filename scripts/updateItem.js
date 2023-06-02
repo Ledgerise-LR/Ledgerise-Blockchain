@@ -1,7 +1,7 @@
 
 const { ethers, deployments, getNamedAccounts, network } = require("hardhat");
 
-const newPrice = ethers.utils.parseEther("0.01");
+const newPrice = ethers.utils.parseEther("0.001");
 const newCharityAddress = "0x9905a159Ed7b24c9a6Fe637cCF40653592224596";
 const itemTokenId = 7;
 

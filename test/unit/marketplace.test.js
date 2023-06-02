@@ -6,6 +6,11 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
 const PRICE = ethers.utils.parseEther("0.01");
 const INTERVAL = 30;
 const AVAILABLE_EDITIONS = 5;
+const LOCATION = {
+  latitude: 12345,
+  longitude: 12345,
+  decimals: 3
+}
 
 !developmentChains.includes(network.name)
   ? describe.skip()
@@ -524,6 +529,93 @@ const AVAILABLE_EDITIONS = 5;
         );
 
         assert(isOwner_true);
+      })
+    })
+
+    describe("saveRealItemHistory", async () => {
+      const realItemHistoryData = {
+        key: "stamp",
+        nftAddress: "",
+        marketplaceTokenId: tokenId,
+        openseaTokenId: 0,
+        buyer: "",
+        location: LOCATION,
+        date: Date.now().toString()
+      }
+
+      beforeEach(async () => {
+
+        const listTx = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS
+        );
+
+        await listTx.wait(1);
+
+        const buyTx = await marketplace.connect(user).buyItem(
+          mainCollection.address,
+          tokenId,
+          charity.address,
+          tokenUri,
+          { value: PRICE }
+        )
+
+        const buyTxReceipt = await buyTx.wait(1);
+
+        realItemHistoryData.buyer = buyTxReceipt.events[2].args.buyer;
+        realItemHistoryData.nftAddress = mainCollection.address;
+        realItemHistoryData.marketplaceTokenId = parseInt(buyTxReceipt.events[2].args.tokenId);
+
+      });
+
+      it("saves real item history and emits an event", async () => {
+        const saveItemToRealHistoryTx = await marketplace.saveRealItemHistory(
+          realItemHistoryData.nftAddress,
+          realItemHistoryData.marketplaceTokenId,
+          realItemHistoryData.key,
+          realItemHistoryData.buyer,
+          realItemHistoryData.date,
+          realItemHistoryData.openseaTokenId,
+          realItemHistoryData.location.latitude,
+          realItemHistoryData.location.longitude,
+          realItemHistoryData.location.decimals
+        );
+
+        const saveItemToRealHistoryTxReceipt = await saveItemToRealHistoryTx.wait(1);
+        assert(saveItemToRealHistoryTxReceipt.transactionHash);
+      })
+
+      it("reverts if decimals isn't equal to 3", async () => {
+        await expect(marketplace.saveRealItemHistory(
+          realItemHistoryData.nftAddress,
+          realItemHistoryData.marketplaceTokenId,
+          realItemHistoryData.key,
+          realItemHistoryData.buyer,
+          realItemHistoryData.date,
+          realItemHistoryData.openseaTokenId,
+          realItemHistoryData.location.latitude,
+          realItemHistoryData.location.longitude,
+          2
+        )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__DecimalsIncorrect");
+      });
+
+      it("reverts if", async () => {
+        await expect(marketplace.saveRealItemHistory(
+          realItemHistoryData.nftAddress,
+          realItemHistoryData.marketplaceTokenId,
+          realItemHistoryData.key,
+          realItemHistoryData.buyer,
+          realItemHistoryData.date,
+          realItemHistoryData.openseaTokenId,
+          100000,
+          100000,
+          realItemHistoryData.location.decimals
+        )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__LocationFormatIncorrect");
       })
     })
   })

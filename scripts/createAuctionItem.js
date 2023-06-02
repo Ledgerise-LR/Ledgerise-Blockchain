@@ -2,9 +2,9 @@
 const { ethers, deployments, getNamedAccounts, network } = require("hardhat");
 
 const PRICE = ethers.utils.parseEther("0.001");
-const AVAILABLE_EDITIONS = 100;
+const INTERVAL = 172800;
 
-const listItem = async () => {
+const createAuctionItem = async () => {
   const deployer = (await getNamedAccounts()).deployer;
   const marketplace = await ethers.getContract("Marketplace");
   const mainCollection = await ethers.getContract("MainCollection");
@@ -12,26 +12,23 @@ const listItem = async () => {
   const charityAddress = "0x9905a159Ed7b24c9a6Fe637cCF40653592224596";
   const creatorAddress = "0x59c0fa07599DB27758E1B7342541e4244Aae4d9F";
 
-  const subCollectionId = 0;  // index of the subcollection in the contract's subcollection array !!!
-
   // change tokenURI after uploading to PINATA !!!
-  const tokenUri = "ipfs://QmXB8jV89RJ1VDW2Z2t4Zk7AagBgJPvPvbqd8F8YUdV2oY";
+  const tokenUri = "ipfs://QmU6MZvyiWa63aY6N9AqEbAR5T9A1UT9ZdnxUq8PeSm1Rz";
 
   const listTokenCounter = await marketplace.getListTokenCounter();
-  const listTx = await marketplace.listItem(
+  const createAuctionToken = await marketplace.setAuction(
     mainCollection.address,
     listTokenCounter.toNumber(),
     PRICE,
     charityAddress,
-    tokenUri,
-    subCollectionId,
-    AVAILABLE_EDITIONS
+    INTERVAL,
+    tokenUri
   )
 
-  await listTx.wait(1);
+  await createAuctionToken.wait(1);
 }
 
-listItem()
+createAuctionItem()
   .then(() => {
   }).catch((error) => {
     console.error(error);
