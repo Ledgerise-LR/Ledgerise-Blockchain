@@ -10,15 +10,15 @@ const metadataTemplate = {
   attributes: [
     {
       trait_type: "Protein",
-      value: 3
+      value: 20
     },
     {
       trait_type: "Carbohydrate",
-      value: 100
+      value: 10
     },
     {
       trait_type: "Fats",
-      value: 50
+      value: 20
     }
   ]
 }
@@ -47,7 +47,7 @@ async function handleTokenUris() {
     // create metadata
     // uploadMetadata
     let tokenUriMetadata = { ...metadataTemplate };
-    tokenUriMetadata.name = files[imageUploadResponsesIndex].replace(".gif", "");
+    tokenUriMetadata.name = files[imageUploadResponsesIndex].replace(".png", "");
     tokenUriMetadata.description = `The price of this NFT is equal to the real price of "${tokenUriMetadata.name.toLowerCase()}".`;
     tokenUriMetadata.image = `ipfs://${imageUploadResponses[imageUploadResponsesIndex].IpfsHash}`;
     console.log(`Uploading ${tokenUriMetadata.name}`);

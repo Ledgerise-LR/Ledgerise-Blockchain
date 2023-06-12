@@ -12,10 +12,10 @@ const listItem = async () => {
   const charityAddress = "0x9905a159Ed7b24c9a6Fe637cCF40653592224596";
   const creatorAddress = "0x59c0fa07599DB27758E1B7342541e4244Aae4d9F";
 
-  const subCollectionId = 0;  // index of the subcollection in the contract's subcollection array !!!
+  const subCollectionId = 1;  // index of the subcollection in the contract's subcollection array !!!
 
   // change tokenURI after uploading to PINATA !!!
-  const tokenUri = "ipfs://QmXB8jV89RJ1VDW2Z2t4Zk7AagBgJPvPvbqd8F8YUdV2oY";
+  const tokenUri = "ipfs://QmTnoowThqtwpGnmRoP8sB2jLBiXpmnL4LKpCSduVHPP4m";
 
   const listTokenCounter = await marketplace.getListTokenCounter();
   const listTx = await marketplace.listItem(

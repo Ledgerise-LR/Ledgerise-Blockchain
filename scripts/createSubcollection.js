@@ -13,8 +13,12 @@ const createSubcollection = async () => {
   const properties = ["background", "category"];
 
   const mainCollection = await ethers.getContract("MainCollection", deployer);
+  const marketplace = await ethers.getContract("Marketplace", deployer);
   const createSubcollectionTx = await mainCollection.createSubcollection(collectionName, charityAddress, properties);
   const createSubcollectionTxReceipt = await createSubcollectionTx.wait(1);
+
+  const addCreatorTx_1 = await marketplace.addCreator(deployer);
+  await addCreatorTx_1.wait(1);
 
   const args = createSubcollectionTxReceipt.events[0].args;
   console.log(`Sub collection created with name ${args[1]} at index ${args[0].toString()}`);

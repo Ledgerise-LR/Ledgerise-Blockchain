@@ -5,9 +5,11 @@ require("dotenv").config();
 
 const verifyContract = async () => {
 
-  const args = [];
   const marketplace = await ethers.getContract("Marketplace");
-  await verify(marketplace.address, args);
+  const args = [marketplace.address];
+
+  const mainCollection = await ethers.getContract("MainCollection");
+  await verify(mainCollection.address, args);
 }
 
 
