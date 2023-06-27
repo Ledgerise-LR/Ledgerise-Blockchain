@@ -14,6 +14,7 @@
     "@types/mocha": ">=9.1.0",
     "chai": "^4.3.7",
     "dotenv": "^16.0.3",
+    "electron": "^25.2.0",
     "ethereum-waffle": "^4.0.10",
     "ethers": "^5.4.7",
     "hardhat": "^2.12.7",

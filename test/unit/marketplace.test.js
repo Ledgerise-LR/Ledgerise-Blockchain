@@ -6,10 +6,17 @@ const { developmentChains, networkConfig } = require("../../helper-hardhat-confi
 const PRICE = ethers.utils.parseEther("0.01");
 const INTERVAL = 30;
 const AVAILABLE_EDITIONS = 5;
+
 const LOCATION = {
   latitude: 12345,
   longitude: 12345,
   decimals: 3
+}
+
+const INCORRECT_FORMAT_LOCATION = {
+  latitude: 1234567,
+  longitude: 123456677,
+  decimal: 2
 }
 
 !developmentChains.includes(network.name)
@@ -85,6 +92,10 @@ const LOCATION = {
 
         const listing = await marketplace.getListing(mainCollection.address, tokenId);
         assert(args.price, listing.price);
+      })
+
+      it("reverts if route data format is incorrect", async () => {
+        /* some code */
       })
     });
 
@@ -604,7 +615,7 @@ const LOCATION = {
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__DecimalsIncorrect");
       });
 
-      it("reverts if", async () => {
+      it("reverts if location format incorrect", async () => {
         await expect(marketplace.saveRealItemHistory(
           realItemHistoryData.nftAddress,
           realItemHistoryData.marketplaceTokenId,
@@ -616,6 +627,10 @@ const LOCATION = {
           100000,
           realItemHistoryData.location.decimals
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__LocationFormatIncorrect");
+      });
+
+      it("reverts if realItemEvent is duplicate", async () => {
+        /* some code */
       })
     })
   })
