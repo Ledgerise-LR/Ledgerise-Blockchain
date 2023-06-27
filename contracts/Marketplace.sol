@@ -25,6 +25,8 @@ error NftMarketplace__NotCreator();
 error NftMarketplace__ItemNotAvailable();
 error NftMarketplace__DecimalsIncorrect();
 error NftMarketplace__LocationFormatIncorrect();
+error NftMarketplace__RouteFormatIncorrect();
+error NftMarketplace__DuplicateRealItemEvent();
 
 contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   // Type declarations
@@ -36,6 +38,13 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address creator;
     uint256 subcollectionId;
     uint256 availableEditions;
+    Route route;
+  }
+
+  struct Route {
+    Location stampLocation;
+    Location shipLocation;
+    Location deliverLocation;
   }
 
   struct Location {
@@ -80,7 +89,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 price,
     string tokenUri,
     uint256 subcollectionId,
-    uint256 availableEditions
+    uint256 availableEditions,
+    Route route
   );
 
   event ItemBought(
@@ -175,6 +185,37 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   // Functions
 
+  function checkForLocationFormat(
+    Location memory location
+  ) internal pure returns (bool) {
+    uint8[3] memory validValuesLatitude = [3, 4, 5];
+    uint8[4] memory validValuesLongitude = [3, 4, 5, 6];
+
+    bool numOfDigitsLatitudeFlag = false;
+    bool numOfDigitsLongitudeFlag = false;
+    bool decimalsFlag = false;
+
+    for (uint i = 0; i < validValuesLatitude.length; i++) {
+      if (getNumOfDigits(location.latitude) == validValuesLatitude[i]) {
+        numOfDigitsLatitudeFlag = true;
+      }
+    }
+
+    for (uint i = 0; i < validValuesLongitude.length; i++) {
+      if (getNumOfDigits(location.longitude) == validValuesLongitude[i]) {
+        numOfDigitsLongitudeFlag = true;
+      }
+    }
+
+    if (location.decimals == 3) {
+      decimalsFlag = true;
+    }
+
+    return (numOfDigitsLatitudeFlag &&
+      numOfDigitsLongitudeFlag &&
+      decimalsFlag);
+  }
+
   function listItem(
     address nftAddress,
     uint256 tokenId,
@@ -182,10 +223,19 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address charityAddress,
     string memory tokenUri,
     uint256 subCollectionId,
-    uint256 availableEditions
+    uint256 availableEditions,
+    Route memory route
   ) external notListed(nftAddress, tokenId, msg.sender) isCreator(msg.sender) {
     if (price <= 0) {
       revert NftMarketplace__PriceMustBeAboveZero();
+    }
+
+    if (
+      !checkForLocationFormat(route.stampLocation) ||
+      !checkForLocationFormat(route.shipLocation) ||
+      !checkForLocationFormat(route.deliverLocation)
+    ) {
+      revert NftMarketplace__RouteFormatIncorrect();
     }
 
     s_listings[nftAddress][tokenId] = Listing(
@@ -195,7 +245,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       charityAddress,
       msg.sender,
       subCollectionId,
-      availableEditions
+      availableEditions,
+      route
     );
 
     s_listTokenCounter += 1;
@@ -208,7 +259,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       price,
       tokenUri,
       subCollectionId,
-      availableEditions
+      availableEditions,
+      route
     );
   }
 
@@ -289,6 +341,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 subcollectionId = s_listings[nftAddress][tokenId].subcollectionId;
     uint256 availableEditions = s_listings[nftAddress][tokenId]
       .availableEditions;
+    Route memory route = s_listings[nftAddress][tokenId].route;
 
     emit ItemListed(
       msg.sender,
@@ -298,7 +351,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       price,
       tokenUri,
       subcollectionId,
-      availableEditions
+      availableEditions,
+      route
     );
   }
 
@@ -455,6 +509,13 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     return i;
   }
 
+  function compareStrings(
+    string memory a,
+    string memory b
+  ) internal pure returns (bool) {
+    return (keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b)));
+  }
+
   function saveRealItemHistory(
     address nftAddress,
     uint256 tokenId,
@@ -479,6 +540,15 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       getNumOfDigits(longitude) != 5
     ) {
       revert NftMarketplace__LocationFormatIncorrect();
+    }
+
+    for (uint i = 0; i < s_realItemHistory[nftAddress][tokenId].length; i++) {
+      string memory savedItemKey = s_realItemHistory[nftAddress][tokenId][i]
+        .key;
+
+      if (compareStrings(savedItemKey, key)) {
+        revert NftMarketplace__DuplicateRealItemEvent();
+      }
     }
 
     s_realItemHistory[nftAddress][tokenId].push(
