@@ -10,15 +10,15 @@ const metadataTemplate = {
   attributes: [
     {
       trait_type: "Protein",
-      value: 20
+      value: 200
     },
     {
       trait_type: "Carbohydrate",
-      value: 10
+      value: 200
     },
     {
       trait_type: "Fats",
-      value: 20
+      value: 50
     }
   ]
 }
