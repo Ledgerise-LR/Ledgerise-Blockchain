@@ -19,6 +19,18 @@ const INCORRECT_FORMAT_LOCATION = {
   decimal: 2
 }
 
+const ROUTE = {
+  stampLocation: LOCATION,
+  shipLocation: LOCATION,
+  deliverLocation: LOCATION
+}
+
+const INCORRECT_ROUTE = {
+  stampLocation: INCORRECT_FORMAT_LOCATION,
+  shipLocation: LOCATION,
+  deliverLocation: LOCATION
+}
+
 !developmentChains.includes(network.name)
   ? describe.skip()
   : describe("Marketplace", () => {
@@ -69,7 +81,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          AVAILABLE_EDITIONS
+          AVAILABLE_EDITIONS,
+          ROUTE
         )).to.be.revertedWithCustomError(
           marketplace,
           "NftMarketplace__NotCreator"
@@ -84,7 +97,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          AVAILABLE_EDITIONS
+          AVAILABLE_EDITIONS,
+          ROUTE
         );
 
         const listTxReceipt = await listTx.wait(1);
@@ -115,7 +129,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          1
+          1,
+          ROUTE
         );
         const listTxReceipt = await listTx.wait(1);
         const argsList = listTxReceipt.events[0].args;
@@ -155,7 +170,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          AVAILABLE_EDITIONS
+          AVAILABLE_EDITIONS,
+          ROUTE
         );
         const listTxReceipt = await listTx.wait(1);
 
@@ -218,7 +234,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          AVAILABLE_EDITIONS
+          AVAILABLE_EDITIONS,
+          ROUTE
         );
         await listTx.wait(1);
       })
@@ -245,7 +262,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          AVAILABLE_EDITIONS
+          AVAILABLE_EDITIONS,
+          ROUTE
         );
         await listTx.wait(1);
       })
@@ -484,7 +502,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          AVAILABLE_EDITIONS
+          AVAILABLE_EDITIONS,
+          ROUTE
         );
         const listTxReceipt_1 = await listTx_1.wait(1);
         const argsList_1 = listTxReceipt_1.events[0].args;
@@ -496,7 +515,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          (AVAILABLE_EDITIONS - 2)
+          (AVAILABLE_EDITIONS - 2),
+          ROUTE
         );
         const listTxReceipt_2 = await listTx_2.wait(1);
         const argsList_2 = listTxReceipt_2.events[0].args;
@@ -563,7 +583,8 @@ const INCORRECT_FORMAT_LOCATION = {
           charity.address,
           tokenUri,
           subCollectionId,
-          AVAILABLE_EDITIONS
+          AVAILABLE_EDITIONS,
+          ROUTE
         );
 
         await listTx.wait(1);
