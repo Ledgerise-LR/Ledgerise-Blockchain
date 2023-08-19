@@ -4,6 +4,7 @@ const { ethers, getNamedAccounts, network, deployments } = require("hardhat");
 const { developmentChains, networkConfig } = require("../../helper-hardhat-config");
 
 const PRICE = ethers.utils.parseEther("0.01");
+const INVALID_PRICE = 0;
 const INTERVAL = 30;
 const AVAILABLE_EDITIONS = 5;
 
@@ -15,8 +16,8 @@ const LOCATION = {
 
 const INCORRECT_FORMAT_LOCATION = {
   latitude: 1234567,
-  longitude: 123456677,
-  decimal: 2
+  longitude: 123456789,
+  decimals: 2
 }
 
 const ROUTE = {
@@ -73,6 +74,22 @@ const INCORRECT_ROUTE = {
     })
 
     describe("listItem", () => {
+      it("reverts if price is below zero", async () => {
+        await expect(marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          INVALID_PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS,
+          ROUTE
+        )).to.be.revertedWithCustomError(
+          marketplace,
+          "NftMarketplace__PriceMustBeAboveZero"
+        );
+      })
+
       it("reverts if the sender is not the creator", async () => {
         await expect(marketplace.connect(user).listItem(
           mainCollection.address,
@@ -108,8 +125,49 @@ const INCORRECT_ROUTE = {
         assert(args.price, listing.price);
       })
 
+      it("reverts if item already listed", async () => {
+        const listTx = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS,
+          ROUTE
+        );
+
+        await listTx.wait(1);
+
+        await expect(marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS,
+          ROUTE
+        )).to.be.revertedWithCustomError(
+          marketplace,
+          "NftMarketplace__ItemAlreadyListed"
+        )
+      })
+
       it("reverts if route data format is incorrect", async () => {
-        /* some code */
+        await expect(marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS,
+          INCORRECT_ROUTE
+        )).to.be.revertedWithCustomError(
+          marketplace,
+          "NftMarketplace__RouteFormatIncorrect"
+        );
       })
     });
 
@@ -177,7 +235,7 @@ const INCORRECT_ROUTE = {
 
         const { gasUsed: gasUsedList, effectiveGasPrice: effectiveGasPriceList } = listTxReceipt;
         const gasCostList = gasUsedList.mul(effectiveGasPriceList);
-        console.log("Gas cost list: " + ethers.utils.formatEther(gasCostList));
+        // console.log("Gas cost list: " + ethers.utils.formatEther(gasCostList));
         const argsList = listTxReceipt.events[0].args;
 
         await expect(marketplace.connect(user).buyItem(
@@ -240,6 +298,13 @@ const INCORRECT_ROUTE = {
         await listTx.wait(1);
       })
 
+      it("reverts if sender is not the owner", async () => {
+        await expect(marketplace.connect(user).cancelItem(mainCollection.address, tokenId)).to.be.revertedWithCustomError(
+          marketplace,
+          "NftMarketplace__NotOwner"
+        )
+      })
+
       it("cancels a listing and emits the event", async () => {
         const tx = await marketplace.cancelItem(mainCollection.address, tokenId);
         const txReceipt = await tx.wait(1);
@@ -289,6 +354,15 @@ const INCORRECT_ROUTE = {
       })
     });
 
+    describe("withdrawProceeds", () => {
+      it("reverts if sender doesn't have proceeds", async () => {
+        await expect(marketplace.connect(user).withdrawProceeds()).to.be.revertedWithCustomError(
+          marketplace,
+          "NftMarketplace__NoProceeds"
+        )
+      })
+    })
+
     describe("setAuction", () => {
       it("sets auction and emits the event", async () => {
         const auctionTx = await marketplace.setAuction(mainCollection.address, tokenId, PRICE, charity.address, INTERVAL, tokenUri);
@@ -298,6 +372,19 @@ const INCORRECT_ROUTE = {
         const auction = await marketplace.getAuctionByParams(mainCollection.address, tokenId);
 
         assert.equal(auction.currentBidding.toString(), args.currentBidding.toString());
+      })
+
+      it("reverts if price is below zero", async () => {
+        await expect(marketplace.setAuction(
+          mainCollection.address,
+          tokenId,
+          INVALID_PRICE,
+          charity.address,
+          INTERVAL,
+          tokenUri)).to.be.revertedWithCustomError(
+            marketplace,
+            "NftMarketplace__PriceMustBeAboveZero"
+          );
       })
     })
 
@@ -651,7 +738,98 @@ const INCORRECT_ROUTE = {
       });
 
       it("reverts if realItemEvent is duplicate", async () => {
-        /* some code */
+
+        const saveItemToRealHistoryTx = await marketplace.saveRealItemHistory(
+          realItemHistoryData.nftAddress,
+          realItemHistoryData.marketplaceTokenId,
+          realItemHistoryData.key,
+          realItemHistoryData.buyer,
+          realItemHistoryData.date,
+          realItemHistoryData.openseaTokenId,
+          realItemHistoryData.location.latitude,
+          realItemHistoryData.location.longitude,
+          realItemHistoryData.location.decimals
+        );
+
+        await saveItemToRealHistoryTx.wait(1);
+
+        await expect(marketplace.saveRealItemHistory(
+          realItemHistoryData.nftAddress,
+          realItemHistoryData.marketplaceTokenId,
+          realItemHistoryData.key,
+          realItemHistoryData.buyer,
+          realItemHistoryData.date,
+          realItemHistoryData.openseaTokenId,
+          realItemHistoryData.location.latitude,
+          realItemHistoryData.location.longitude,
+          realItemHistoryData.location.decimals
+        )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__DuplicateRealItemEvent");
+      })
+    });
+
+    describe("other", () => {
+
+      const realItemHistoryData = {
+        key: "stamp",
+        nftAddress: "",
+        marketplaceTokenId: tokenId,
+        openseaTokenId: 0,
+        buyer: "",
+        location: LOCATION,
+        date: Date.now().toString()
+      }
+
+      beforeEach(async () => {
+        const listTx = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          1,
+          ROUTE
+        );
+        await listTx.wait(1);
+
+        const buyTx = await marketplace.connect(user).buyItem(
+          mainCollection.address,
+          tokenId,
+          charity.address,
+          tokenUri,
+          { value: PRICE }
+        )
+
+        const buyTxReceipt = await buyTx.wait(1);
+
+        realItemHistoryData.buyer = buyTxReceipt.events[2].args.buyer;
+        realItemHistoryData.nftAddress = mainCollection.address;
+        realItemHistoryData.marketplaceTokenId = parseInt(buyTxReceipt.events[2].args.tokenId);
+
+        const saveItemToRealHistoryTx = await marketplace.saveRealItemHistory(
+          realItemHistoryData.nftAddress,
+          realItemHistoryData.marketplaceTokenId,
+          realItemHistoryData.key,
+          realItemHistoryData.buyer,
+          realItemHistoryData.date,
+          realItemHistoryData.openseaTokenId,
+          realItemHistoryData.location.latitude,
+          realItemHistoryData.location.longitude,
+          realItemHistoryData.location.decimals
+        );
+
+        await saveItemToRealHistoryTx.wait(1);
+      })
+
+      it("returns listTokenCounter", async () => {
+        const listTokenCounter = await marketplace.getListTokenCounter();
+        assert.equal(listTokenCounter, 1);
+      })
+
+      it("returns realItemHistory", async () => {
+        const realItemHistory = await marketplace.getRealItemHistory(realItemHistoryData.nftAddress, realItemHistoryData.marketplaceTokenId);
+        assert.equal(realItemHistory[0].key, realItemHistoryData.key);
+        assert.equal(realItemHistory[0].buyer, realItemHistoryData.buyer);
       })
     })
   })
