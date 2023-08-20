@@ -73,6 +73,35 @@ const INCORRECT_ROUTE = {
       tokenUri = "https://bafybeihklnl37pzyfwnaxzoihxmne2srhug6i6pw2tuyohngcwy5xrkxti.ipfs.dweb.link/";
     })
 
+    describe("mainCollection", () => {
+      it("returns subcollectionCounter", async () => {
+        const subcollectionCounter = await mainCollection.getSubcollectionCounter();
+        assert.equal(subcollectionCounter, 1);
+      })
+
+      it("reverts if sender is not allowed to interact", async () => {
+        await expect(mainCollection.connect(user).mintNft(
+          subCollectionId,
+          tokenUri,
+          deployer
+        )).to.be.revertedWithCustomError(
+          mainCollection,
+          "MainCollection__ContractNotAllowed"
+        )
+      })
+
+      it("reverts if sender is not allowed to interact", async () => {
+        await expect(mainCollection.connect(user).createSubcollection(
+          "Türkiye Tek Yürek",
+          charity.address,
+          ["background", "category"]
+        )).to.be.revertedWithCustomError(
+          mainCollection,
+          "MainCollection__NotOwner"
+        )
+      })
+    })
+
     describe("listItem", () => {
       it("reverts if price is below zero", async () => {
         await expect(marketplace.listItem(
@@ -462,6 +491,10 @@ const INCORRECT_ROUTE = {
 
       })
     });
+
+    describe("transferFailed", async () => {
+
+    })
 
     describe("checkUpkeep", () => {
       let tokenId, user, auction;
