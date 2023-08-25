@@ -18,7 +18,15 @@ const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || "https://eth-sepolia";
 module.exports = {
   solidity: {
     compilers: [
-      { version: "0.8.7" },
+      {
+        version: "0.8.7",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1000
+          }
+        }
+      },
       { version: "0.6.6" }
     ]
   },

@@ -247,7 +247,7 @@ const INCORRECT_ROUTE = {
         );
       })
 
-      it("reverts when fiat value insufficient", async () => {
+      it("reverts when USD value insufficient", async () => {
 
         const listTx = await marketplace.listItem(
           mainCollection.address,
@@ -274,6 +274,73 @@ const INCORRECT_ROUTE = {
             marketplace,
             "NftMarketplace__PriceNotMetFiat"
           );
+        }
+      })
+
+      it("reverts when EUR value insufficient (double conversion)", async () => {
+
+        const listTx = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS,
+          ROUTE
+        );
+        await listTx.wait(1);
+
+        if (currencyDoubleFiatConversion == "EUR") {
+
+          const UsdAmount = await marketplace.priorConversion(1, mockV3Aggregator.address);
+
+          await expect(marketplace.connect(user).buyItemWithFiatCurrency(
+            mainCollection.address,
+            tokenId,
+            charity.address,
+            tokenUri,
+            mockV3Aggregator.address, /* priceFeed address Mock */
+            UsdAmount, /* Value in dollars */
+          )).to.be.revertedWithCustomError(
+            marketplace,
+            "NftMarketplace__PriceNotMetFiat"
+          );
+        }
+      })
+
+      it("buys item with fiat currency", async () => {
+        const listTx = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS,
+          ROUTE
+        );
+        await listTx.wait(1);
+
+        if (currencySingleFiatConversion == "USD") {
+
+          const UsdAmount = await marketplace.priorConversion(PRICE.toBigInt(), mockV3Aggregator.address);
+
+          const buyTx = await marketplace.connect(user).buyItemWithFiatCurrency(
+            mainCollection.address,
+            tokenId,
+            charity.address,
+            tokenUri,
+            mockV3Aggregator.address, /* priceFeed address Mock */
+            UsdAmount, /* Value in dollars */
+          )
+
+          const buyTxReceipt = await buyTx.wait(1);
+
+          // console.log(buyTxReceipt.events[2].args.fiatPrice.toString());
+          // console.log(UsdAmount.toString())
+
+          assert.equal(buyTxReceipt.events[2].args.fiatPrice.toString(), UsdAmount.toString());
         }
       })
 

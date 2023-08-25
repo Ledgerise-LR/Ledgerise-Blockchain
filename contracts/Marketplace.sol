@@ -111,6 +111,14 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 openseaTokenId
   );
 
+  event ItemBoughtWithFiat(
+    address indexed buyer,
+    address indexed nftAddress,
+    uint256 indexed tokenId,
+    uint256 fiatPrice,
+    uint256 openseaTokenId
+  );
+
   event ItemCanceled(
     address indexed seller,
     address indexed nftAddress,
@@ -150,6 +158,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   // NFT variables
   mapping(address => mapping(uint256 => Listing)) public s_listings;
   mapping(address => uint256) public s_proceeds;
+  mapping(address => uint256) s_charity_fiat_proceeds;
   mapping(address => mapping(uint256 => RealItemHistory[])) s_realItemHistory;
   Auction[] public s_auctions;
   mapping(address => bool) public s_creators;
@@ -352,21 +361,17 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     s_proceeds[listedItem.seller] = s_proceeds[listedItem.seller] + sellerFunds;
 
-    (bool successCharity, ) = payable(charityAddress).call{value: charityFunds}(
-      ''
-    );
-
-    if (!successCharity) {
-      revert NftMarketplace__TransferFailed();
-    }
+    s_charity_fiat_proceeds[charityAddress] =
+      s_charity_fiat_proceeds[charityAddress] +
+      charityFunds;
 
     uint256 openseaTokenId = MainCollection(nftAddress).getTokenCounter();
 
-    emit ItemBought(
+    emit ItemBoughtWithFiat(
       msg.sender,
       nftAddress,
       tokenId,
-      listedItem.price,
+      fiatAmount,
       openseaTokenId
     );
   }
