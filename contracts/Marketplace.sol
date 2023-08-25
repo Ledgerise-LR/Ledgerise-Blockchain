@@ -354,8 +354,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, msg.sender);
 
-    uint256 charityFunds = ((listedItem.price) * 70) / 100;
-    uint256 sellerFunds = ((listedItem.price) * 20) / 100;
+    uint256 charityFunds = ((listedItem.price / 1e18) * 70) / 100;
+    uint256 sellerFunds = ((listedItem.price / 1e18) * 20) / 100;
 
     s_listings[nftAddress][tokenId].availableEditions -= 1;
 
@@ -434,6 +434,15 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     if (!success) {
       revert NftMarketplace__TransferFailed();
     }
+  }
+
+  function deleteWithdrawedFiatAmountFromCharityProceeds(
+    uint256 fiatAmount /* USD */,
+    address charityAddress
+  ) internal {
+    s_charity_fiat_proceeds[charityAddress] =
+      s_charity_fiat_proceeds[charityAddress] -
+      fiatAmount;
   }
 
   // Auction functions
