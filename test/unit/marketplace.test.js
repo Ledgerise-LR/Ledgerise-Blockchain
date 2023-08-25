@@ -8,6 +8,8 @@ const INVALID_PRICE = 0;
 const INTERVAL = 30;
 const AVAILABLE_EDITIONS = 5;
 
+const currencySingleFiatConversion = "USD", currencyDoubleFiatConversion = "EUR";
+
 const LOCATION = {
   latitude: 12345,
   longitude: 12345,
@@ -36,7 +38,7 @@ const INCORRECT_ROUTE = {
   ? describe.skip()
   : describe("Marketplace", () => {
 
-    let marketplace, basicNft, mainCollection, charity, creator, deployer, tokenUri, user, tokenId, subCollectionId;
+    let marketplace, basicNft, mainCollection, mockV3Aggregator, charity, creator, deployer, tokenUri, user, tokenId, subCollectionId;
 
     beforeEach(async () => {
       deployer = (await getNamedAccounts()).deployer;
@@ -44,6 +46,7 @@ const INCORRECT_ROUTE = {
       marketplace = await ethers.getContract("Marketplace", deployer);
       basicNft = await ethers.getContract("BasicNft", deployer);
       mainCollection = await ethers.getContract("MainCollection", deployer);
+      mockV3Aggregator = await ethers.getContract("MockV3Aggregator", deployer);
 
       tokenId = await mainCollection.getTokenCounter();
 
@@ -244,8 +247,37 @@ const INCORRECT_ROUTE = {
         );
       })
 
+      it("reverts when fiat value insufficient", async () => {
 
-      it("it reverts when value insufficient, it buys an item and emits the event", async () => {
+        const listTx = await marketplace.listItem(
+          mainCollection.address,
+          tokenId,
+          PRICE,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          AVAILABLE_EDITIONS,
+          ROUTE
+        );
+        await listTx.wait(1);
+
+        if (currencySingleFiatConversion == "USD") {
+
+          await expect(marketplace.connect(user).buyItemWithFiatCurrency(
+            mainCollection.address,
+            tokenId,
+            charity.address,
+            tokenUri,
+            mockV3Aggregator.address, /* priceFeed address Mock */
+            1, /* Value in dollars */
+          )).to.be.revertedWithCustomError(
+            marketplace,
+            "NftMarketplace__PriceNotMetFiat"
+          );
+        }
+      })
+
+      it("reverts when value insufficient, it buys an item and emits the event", async () => {
 
         const charityInitialBalance = await ethers.provider.getBalance(charity.address);
         const sellerInitialBalance = await ethers.provider.getBalance(deployer);

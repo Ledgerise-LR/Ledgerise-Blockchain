@@ -6,6 +6,9 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@chainlink/contracts/src/v0.8/KeeperCompatible.sol';
 import './MainCollection.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+
+import './utils/PriceConverter.sol';
 
 // Errors
 
@@ -19,6 +22,11 @@ error NftMarketplace__PriceNotMet(
   uint256 tokenId,
   uint256 price
 );
+error NftMarketplace__PriceNotMetFiat(
+  address nftAddress,
+  uint256 tokenId,
+  uint256 fiatAmount
+);
 error NftMarketplace__NoProceeds();
 error NftMarketplace__TransferFailed();
 error NftMarketplace__NotCreator();
@@ -29,6 +37,8 @@ error NftMarketplace__RouteFormatIncorrect();
 error NftMarketplace__DuplicateRealItemEvent();
 
 contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
+  using PriceConverter for uint256;
+
   // Type declarations
   struct Listing {
     uint256 uniqueListingId;
@@ -310,6 +320,57 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     );
   }
 
+  function buyItemWithFiatCurrency(
+    address nftAddress,
+    uint256 tokenId,
+    address charityAddress,
+    string memory tokenUri,
+    AggregatorV3Interface priceFeed,
+    uint256 fiatAmount
+  ) external nonReentrant isListed(nftAddress, tokenId) {
+    /* Only for fiat currency payments: mastercard, visa, paypal etc.*/
+
+    Listing memory listedItem = s_listings[nftAddress][tokenId];
+
+    if (fiatAmount < listedItem.price.getConversionRate(priceFeed)) {
+      revert NftMarketplace__PriceNotMetFiat(nftAddress, tokenId, fiatAmount);
+    }
+
+    if (listedItem.availableEditions <= 0) {
+      revert NftMarketplace__ItemNotAvailable();
+    }
+
+    uint256 subcollectionId = MainCollection(nftAddress)
+      .getSubcollectionOfToken(tokenId);
+
+    MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, msg.sender);
+
+    uint256 charityFunds = ((listedItem.price) * 70) / 100;
+    uint256 sellerFunds = ((listedItem.price) * 20) / 100;
+
+    s_listings[nftAddress][tokenId].availableEditions -= 1;
+
+    s_proceeds[listedItem.seller] = s_proceeds[listedItem.seller] + sellerFunds;
+
+    (bool successCharity, ) = payable(charityAddress).call{value: charityFunds}(
+      ''
+    );
+
+    if (!successCharity) {
+      revert NftMarketplace__TransferFailed();
+    }
+
+    uint256 openseaTokenId = MainCollection(nftAddress).getTokenCounter();
+
+    emit ItemBought(
+      msg.sender,
+      nftAddress,
+      tokenId,
+      listedItem.price,
+      openseaTokenId
+    );
+  }
+
   function cancelItem(
     address nftAddress,
     uint256 tokenId
@@ -561,6 +622,13 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   function addCreator(address creatorAddress) external onlyOwner {
     s_creators[creatorAddress] = true;
     emit CreatorAdded(creatorAddress);
+  }
+
+  function priorConversion(
+    uint256 amount,
+    AggregatorV3Interface priceFeed
+  ) external view returns (uint256) {
+    return amount.getConversionRateFiatToFiat(priceFeed);
   }
 
   function getRealItemHistory(

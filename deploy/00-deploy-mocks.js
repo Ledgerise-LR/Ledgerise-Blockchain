@@ -1,6 +1,6 @@
 
 const { ethers, network } = require("hardhat");
-const { networkConfig, developmentChains } = require("../helper-hardhat-config");
+const { networkConfig, developmentChains, INITIAL_ANSWER, DECIMALS } = require("../helper-hardhat-config");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
 
@@ -18,6 +18,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     waitConfirmations: network.config.blockConfirmations || 1,
   })
 
+  if (developmentChains.includes(network.name)) {
+    log("Local network detected. Deploying mocks")
+    await deploy("MockV3Aggregator", {
+      contract: "MockV3Aggregator",
+      from: deployer,
+      log: true,
+      args: [DECIMALS, INITIAL_ANSWER]
+    })
+  }
 }
 
 module.exports.tags = ["all", "basicnft", "main"]
