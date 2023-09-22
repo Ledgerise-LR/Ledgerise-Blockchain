@@ -25,7 +25,6 @@ contract LedgeriseLens is ERC721URIStorage {
   constructor() ERC721('LedgeriseLens Visual Verification', 'LVV') {
     s_tokenCounter = 0;
     i_owner = msg.sender;
-    setApprovalForAll(msg.sender, true);
   }
 
   modifier isOwner(address spender) {
@@ -35,7 +34,7 @@ contract LedgeriseLens is ERC721URIStorage {
     _;
   }
 
-  function mintVisualNftuint256(
+  function mintVisualNft(
     uint256 itemOpenseaTokenId,
     string memory tokenUri,
     address buyer,
@@ -54,7 +53,7 @@ contract LedgeriseLens is ERC721URIStorage {
     emit VisualNftMinted(buyer, (s_tokenCounter - 1), itemOpenseaTokenId);
   }
 
-  function tokenURI(
+  function getTokenUri(
     uint256 itemOpenseaTokenId,
     address buyer,
     string memory key

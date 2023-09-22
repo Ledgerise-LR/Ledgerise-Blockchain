@@ -69,6 +69,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     string date;
     uint256 openseaTokenId;
     Location location;
+    uint256 visualVerificationTokenId;
   }
 
   enum AuctionState {
@@ -600,7 +601,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 openseaTokenId,
     uint256 latitude,
     uint256 longitude,
-    uint256 decimals
+    uint256 decimals,
+    uint256 visualVerificationTokenId
   ) external onlyOwner {
     Location memory location = Location(latitude, longitude, decimals);
 
@@ -627,7 +629,14 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     }
 
     s_realItemHistory[nftAddress][tokenId].push(
-      RealItemHistory(key, buyer, date, openseaTokenId, location)
+      RealItemHistory(
+        key,
+        buyer,
+        date,
+        openseaTokenId,
+        location,
+        visualVerificationTokenId
+      )
     );
 
     emit RealItemHistorySaved(nftAddress, tokenId);

@@ -7,6 +7,7 @@ const PRICE = ethers.utils.parseEther("0.01");
 const INVALID_PRICE = 0;
 const INTERVAL = 30;
 const AVAILABLE_EDITIONS = 5;
+const DUMMY_ADDRESS = "0x00000"
 
 const currencySingleFiatConversion = "USD", currencyDoubleFiatConversion = "EUR";
 
@@ -38,7 +39,7 @@ const INCORRECT_ROUTE = {
   ? describe.skip()
   : describe("Marketplace", () => {
 
-    let marketplace, basicNft, mainCollection, mockV3Aggregator, charity, creator, deployer, tokenUri, user, tokenId, subCollectionId;
+    let marketplace, basicNft, mainCollection, ledgeriseLens, mockV3Aggregator, charity, creator, deployer, tokenUri, user, tokenId, subCollectionId;
 
     beforeEach(async () => {
       deployer = (await getNamedAccounts()).deployer;
@@ -47,6 +48,7 @@ const INCORRECT_ROUTE = {
       basicNft = await ethers.getContract("BasicNft", deployer);
       mainCollection = await ethers.getContract("MainCollection", deployer);
       mockV3Aggregator = await ethers.getContract("MockV3Aggregator", deployer);
+      ledgeriseLens = await ethers.getContract("LedgeriseLens", deployer);
 
       tokenId = await mainCollection.getTokenCounter();
 
@@ -790,8 +792,11 @@ const INCORRECT_ROUTE = {
         openseaTokenId: 0,
         buyer: "",
         location: LOCATION,
-        date: Date.now().toString()
+        date: Date.now().toString(),
+        visualVerificationTokenId: 0
       }
+
+      let visualVerificationData = {};
 
       beforeEach(async () => {
 
@@ -822,7 +827,64 @@ const INCORRECT_ROUTE = {
         realItemHistoryData.nftAddress = mainCollection.address;
         realItemHistoryData.marketplaceTokenId = parseInt(buyTxReceipt.events[2].args.tokenId);
 
+        visualVerificationData = {
+          itemOpenseaTokenId: realItemHistoryData.openseaTokenId,
+          key: realItemHistoryData.key,
+          buyer: realItemHistoryData.buyer,
+          tokenUri: tokenUri
+        }
+
+        // console.log(visualVerificationData)
+
+        const verifyVisualTx = await ledgeriseLens.mintVisualNft(
+          visualVerificationData.itemOpenseaTokenId,
+          visualVerificationData.tokenUri,
+          visualVerificationData.buyer,
+          visualVerificationData.key
+        )
+
+        const verifyVisualTxReceipt = await verifyVisualTx.wait(1);
+        const eventData = verifyVisualTxReceipt.events[1].args
+        const visualVerificationTokenId = eventData.tokenCounter;
+        realItemHistoryData.visualVerificationTokenId = visualVerificationTokenId;
+
+        // console.log(realItemHistoryData.visualVerificationTokenId);
+
       });
+
+      it("reverts if spender is not the owner", async () => {
+        const visualVerificationDataDummy = {
+          itemOpenseaTokenId: 0,
+          key: "stamp",
+          buyer: realItemHistoryData.buyer,
+          tokenUri: tokenUri
+        }
+
+        await expect(ledgeriseLens.connect(user).mintVisualNft(
+          visualVerificationDataDummy.itemOpenseaTokenId,
+          visualVerificationDataDummy.tokenUri,
+          visualVerificationDataDummy.buyer,
+          visualVerificationDataDummy.key
+        )).to.be.revertedWithCustomError(
+          ledgeriseLens,
+          "LedgeriseLens__NotOwner"
+        );
+      })
+
+      it("returns the tokenUri of the visual verification", async () => {
+        const tokenUriResult = await ledgeriseLens.getTokenUri(
+          visualVerificationData.itemOpenseaTokenId,
+          visualVerificationData.buyer,
+          visualVerificationData.key
+        )
+
+        assert.equal(tokenUri, tokenUriResult);
+      })
+
+      it("returns the token counter", async () => {
+        const tokenCounter = await ledgeriseLens.getTokenCounter();
+        assert.equal(parseInt(tokenCounter) - 1, parseInt(realItemHistoryData.visualVerificationTokenId));
+      })
 
       it("saves real item history and emits an event", async () => {
         const saveItemToRealHistoryTx = await marketplace.saveRealItemHistory(
@@ -834,7 +896,8 @@ const INCORRECT_ROUTE = {
           realItemHistoryData.openseaTokenId,
           realItemHistoryData.location.latitude,
           realItemHistoryData.location.longitude,
-          realItemHistoryData.location.decimals
+          realItemHistoryData.location.decimals,
+          realItemHistoryData.visualVerificationTokenId
         );
 
         const saveItemToRealHistoryTxReceipt = await saveItemToRealHistoryTx.wait(1);
@@ -851,7 +914,8 @@ const INCORRECT_ROUTE = {
           realItemHistoryData.openseaTokenId,
           realItemHistoryData.location.latitude,
           realItemHistoryData.location.longitude,
-          2
+          2,
+          realItemHistoryData.visualVerificationTokenId
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__DecimalsIncorrect");
       });
 
@@ -865,7 +929,8 @@ const INCORRECT_ROUTE = {
           realItemHistoryData.openseaTokenId,
           100000,
           100000,
-          realItemHistoryData.location.decimals
+          realItemHistoryData.location.decimals,
+          realItemHistoryData.visualVerificationTokenId
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__LocationFormatIncorrect");
       });
 
@@ -880,7 +945,8 @@ const INCORRECT_ROUTE = {
           realItemHistoryData.openseaTokenId,
           realItemHistoryData.location.latitude,
           realItemHistoryData.location.longitude,
-          realItemHistoryData.location.decimals
+          realItemHistoryData.location.decimals,
+          realItemHistoryData.visualVerificationTokenId
         );
 
         await saveItemToRealHistoryTx.wait(1);
@@ -894,7 +960,8 @@ const INCORRECT_ROUTE = {
           realItemHistoryData.openseaTokenId,
           realItemHistoryData.location.latitude,
           realItemHistoryData.location.longitude,
-          realItemHistoryData.location.decimals
+          realItemHistoryData.location.decimals,
+          realItemHistoryData.visualVerificationTokenId
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__DuplicateRealItemEvent");
       })
     });
@@ -947,7 +1014,8 @@ const INCORRECT_ROUTE = {
           realItemHistoryData.openseaTokenId,
           realItemHistoryData.location.latitude,
           realItemHistoryData.location.longitude,
-          realItemHistoryData.location.decimals
+          realItemHistoryData.location.decimals,
+          0
         );
 
         await saveItemToRealHistoryTx.wait(1);
