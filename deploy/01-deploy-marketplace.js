@@ -28,4 +28,4 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
   }
 }
 
-module.exports.tags = ["all", "marketplace"];
+module.exports.tags = ["all", "main", "marketplace"];

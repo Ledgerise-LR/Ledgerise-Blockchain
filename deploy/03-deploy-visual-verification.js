@@ -24,4 +24,4 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
 }
 
-module.exports.tags = ["all", "ledgeriselens"];
+module.exports.tags = ["all", "main", "ledgeriselens"];
