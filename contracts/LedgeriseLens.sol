@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol';
 
 // errors
 error LedgeriseLens__NotOwner();
+error LedgeriseLens__ItemAlreadyVerified();
 
 contract LedgeriseLens is ERC721URIStorage {
   struct ItemVisual {
@@ -40,6 +41,12 @@ contract LedgeriseLens is ERC721URIStorage {
     address buyer,
     string memory key
   ) external isOwner(msg.sender) {
+    if (
+      bytes(s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][key].tokenUri)
+        .length > 0
+    ) {
+      revert LedgeriseLens__ItemAlreadyVerified();
+    }
     s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][key] = ItemVisual(
       tokenUri,
       s_tokenCounter

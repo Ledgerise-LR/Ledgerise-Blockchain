@@ -881,6 +881,27 @@ const INCORRECT_ROUTE = {
         assert.equal(tokenUri, tokenUriResult);
       })
 
+      it("reverts if visual verification is duplicate", async () => {
+        // const verifyVisualTx = await ledgeriseLens.mintVisualNft(
+        //   visualVerificationData.itemOpenseaTokenId,
+        //   visualVerificationData.tokenUri,
+        //   visualVerificationData.buyer,
+        //   visualVerificationData.key
+        // )
+
+        // await verifyVisualTx.wait(1);
+
+        await expect(ledgeriseLens.mintVisualNft(
+          visualVerificationData.itemOpenseaTokenId,
+          visualVerificationData.tokenUri,
+          visualVerificationData.buyer,
+          visualVerificationData.key
+        )).to.be.revertedWithCustomError(
+          ledgeriseLens,
+          "LedgeriseLens__ItemAlreadyVerified"
+        );
+      })
+
       it("returns the token counter", async () => {
         const tokenCounter = await ledgeriseLens.getTokenCounter();
         assert.equal(parseInt(tokenCounter) - 1, parseInt(realItemHistoryData.visualVerificationTokenId));
