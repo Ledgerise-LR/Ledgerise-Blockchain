@@ -112,14 +112,6 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 openseaTokenId
   );
 
-  event ItemBoughtWithFiat(
-    address indexed buyer,
-    address indexed nftAddress,
-    uint256 indexed tokenId,
-    uint256 fiatPrice,
-    uint256 openseaTokenId
-  );
-
   event ItemCanceled(
     address indexed seller,
     address indexed nftAddress,
@@ -304,8 +296,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, msg.sender);
 
-    uint256 charityFunds = ((msg.value) * 70) / 100;
-    uint256 sellerFunds = ((msg.value) * 20) / 100;
+    uint256 charityFunds = ((msg.value) * 995) / 1000;
+    uint256 sellerFunds = ((msg.value) * 5) / 1000;
 
     s_listings[nftAddress][tokenId].availableEditions -= 1;
 
@@ -336,7 +328,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address charityAddress,
     string memory tokenUri,
     AggregatorV3Interface priceFeed,
-    uint256 fiatAmount
+    uint256 fiatAmount,
+    address telephoneNumber /* 0x<phone-number> */
   ) external nonReentrant isListed(nftAddress, tokenId) {
     /* Only for fiat currency payments: mastercard, visa, paypal etc.*/
 
@@ -353,10 +346,14 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 subcollectionId = MainCollection(nftAddress)
       .getSubcollectionOfToken(tokenId);
 
-    MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, msg.sender);
+    MainCollection(nftAddress).mintNft(
+      subcollectionId,
+      tokenUri,
+      telephoneNumber
+    );
 
-    uint256 charityFunds = ((listedItem.price / 1e18) * 70) / 100;
-    uint256 sellerFunds = ((listedItem.price / 1e18) * 20) / 100;
+    uint256 charityFunds = ((listedItem.price / 1e18) * 995) / 1000;
+    uint256 sellerFunds = ((listedItem.price / 1e18) * 5) / 100;
 
     s_listings[nftAddress][tokenId].availableEditions -= 1;
 
@@ -368,8 +365,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     uint256 openseaTokenId = MainCollection(nftAddress).getTokenCounter();
 
-    emit ItemBoughtWithFiat(
-      msg.sender,
+    emit ItemBought(
+      telephoneNumber,
       nftAddress,
       tokenId,
       fiatAmount,
