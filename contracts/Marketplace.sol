@@ -91,6 +91,20 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address creator;
   }
 
+  enum ReportCode {
+    TIMEOUT,
+    INCOMPATIBLE_MEASUREMENT,
+    IRRELEVANT_VISUAL,
+    OTHER
+  }
+
+  struct Report {
+    string reporter; // phone number in the application
+    string message;
+    ReportCode reportCode;
+    uint256 timestamp;
+  }
+
   // Events
   event ItemListed(
     address indexed seller,
@@ -146,7 +160,17 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   event CreatorAdded(address indexed creatorAddress);
 
-  event RealItemHistorySaved(address nftAddress, uint256 tokenId);
+  event RealItemHistorySaved(
+    address indexed nftAddress,
+    uint256 indexed tokenId
+  );
+
+  event ReportCreated(
+    string reporter,
+    string message,
+    uint256 indexed reportCode,
+    uint256 indexed timestamp
+  );
 
   // NFT variables
   mapping(address => mapping(uint256 => Listing)) public s_listings;
@@ -156,6 +180,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   Auction[] public s_auctions;
   mapping(address => bool) public s_creators;
   uint256 private s_listTokenCounter = 0;
+  Report[] public s_reports;
 
   // modifiers
 
@@ -642,6 +667,25 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   function addCreator(address creatorAddress) external onlyOwner {
     s_creators[creatorAddress] = true;
     emit CreatorAdded(creatorAddress);
+  }
+
+  function reportIssue(
+    string memory reporter /* Telephone number in application */,
+    string memory message,
+    uint256 reportCode /* Can be 0, 1, 2, 3 */
+  ) external onlyOwner {
+    uint256 timestamp = block.timestamp;
+
+    Report memory newReport = Report(
+      reporter,
+      message,
+      ReportCode(reportCode),
+      timestamp
+    );
+
+    s_reports.push(newReport);
+
+    emit ReportCreated(reporter, message, reportCode, timestamp);
   }
 
   function priorConversion(

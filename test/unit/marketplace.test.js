@@ -987,6 +987,33 @@ const INCORRECT_ROUTE = {
       })
     });
 
+    describe("report", () => {
+
+      it("creates a report and emit the event", async () => {
+
+        const timestampReal = parseInt(Date.now() / 100000);
+
+        const addressTelephoneNumber = "5302137012"
+        const message = "The visual doesn't belong to an aid parcel. It's a car.";
+        const reportCode = 2; // IRRELEVANT_VISUAL
+        const createReportTx = await marketplace.reportIssue(
+          addressTelephoneNumber,
+          message,
+          reportCode
+        );
+
+        const createReportTxReceipt = await createReportTx.wait(1);
+
+        const args = createReportTxReceipt.events[0].args;
+        assert.equal(args[0], addressTelephoneNumber);
+        assert.equal(args[1], message);
+        assert.equal(parseInt(args[2]), reportCode);
+
+        const timestampConverted = parseInt(parseInt(args[3]) / 100);
+        assert.equal(timestampConverted, timestampReal)
+      })
+    })
+
     describe("other", () => {
 
       const realItemHistoryData = {
