@@ -101,7 +101,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   struct Report {
     string reporter; // phone number in the application
     string message;
-    ReportCode reportCode;
+    ReportCode[] reportCode;
     uint256 timestamp;
   }
 
@@ -168,7 +168,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   event ReportCreated(
     string reporter,
     string message,
-    uint256 indexed reportCode,
+    uint256[] indexed reportCode,
     uint256 indexed timestamp
   );
 
@@ -672,20 +672,26 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   function reportIssue(
     string memory reporter /* Telephone number in application */,
     string memory message,
-    uint256 reportCode /* Can be 0, 1, 2, 3 */
+    uint256[] memory reportCodes /* Can be 0, 1, 2, 3 */
   ) external onlyOwner {
     uint256 timestamp = block.timestamp;
+
+    ReportCode[] memory reportCodesEnum = new ReportCode[](reportCodes.length);
+
+    for (uint256 i = 0; i < reportCodes.length; i++) {
+      reportCodesEnum[i] = ReportCode(reportCodes[i]);
+    }
 
     Report memory newReport = Report(
       reporter,
       message,
-      ReportCode(reportCode),
+      reportCodesEnum,
       timestamp
     );
 
     s_reports.push(newReport);
 
-    emit ReportCreated(reporter, message, reportCode, timestamp);
+    emit ReportCreated(reporter, message, reportCodes, timestamp);
   }
 
   function priorConversion(
