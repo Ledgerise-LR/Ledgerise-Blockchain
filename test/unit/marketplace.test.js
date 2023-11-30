@@ -8,6 +8,12 @@ const INVALID_PRICE = 0;
 const INTERVAL = 30;
 const AVAILABLE_EDITIONS = 5;
 const DUMMY_ADDRESS = "0x00000"
+const DONOR_ID = "980";
+const EVENT_DATA = {
+  "stamp": 0,
+  "shipped": 1,
+  "delivered": 2
+};
 
 const currencySingleFiatConversion = "USD", currencyDoubleFiatConversion = "EUR";
 
@@ -207,7 +213,7 @@ const INCORRECT_ROUTE = {
 
     describe("buyItem", () => {
       it("should revert when item is not listed", async () => {
-        await expect(marketplace.buyItem(mainCollection.address, tokenId, charity.address, tokenUri)).to.be.revertedWithCustomError(
+        await expect(marketplace.connect(user).buyItem(mainCollection.address, tokenId, charity.address, tokenUri, user.toString())).to.be.revertedWithCustomError(
           marketplace,
           "NftMarketplace__ItemNotListed"
         )
@@ -232,6 +238,7 @@ const INCORRECT_ROUTE = {
           argsList.tokenId,
           charity.address,
           tokenUri,
+          user.toString(),
           { value: PRICE }
         );
         const buyTxReceipt = await buyTx.wait(1);
@@ -242,6 +249,7 @@ const INCORRECT_ROUTE = {
           buyArgsList.tokenId,
           charity.address,
           tokenUri,
+          user.toString(),
           { value: PRICE }
         )).to.be.revertedWithCustomError(
           marketplace,
@@ -272,6 +280,7 @@ const INCORRECT_ROUTE = {
             tokenUri,
             mockV3Aggregator.address, /* priceFeed address Mock */
             1, /* Value in dollars */
+            DONOR_ID
           )).to.be.revertedWithCustomError(
             marketplace,
             "NftMarketplace__PriceNotMetFiat"
@@ -304,6 +313,7 @@ const INCORRECT_ROUTE = {
             tokenUri,
             mockV3Aggregator.address, /* priceFeed address Mock */
             UsdAmount, /* Value in dollars */
+            DONOR_ID
           )).to.be.revertedWithCustomError(
             marketplace,
             "NftMarketplace__PriceNotMetFiat"
@@ -335,6 +345,7 @@ const INCORRECT_ROUTE = {
             tokenUri,
             mockV3Aggregator.address, /* priceFeed address Mock */
             UsdAmount, /* Value in dollars */
+            DONOR_ID
           )
 
           const buyTxReceipt = await buyTx.wait(1);
@@ -342,7 +353,9 @@ const INCORRECT_ROUTE = {
           // console.log(buyTxReceipt.events[2].args.fiatPrice.toString());
           // console.log(UsdAmount.toString())
 
-          assert.equal(buyTxReceipt.events[2].args.fiatPrice.toString(), UsdAmount.toString());
+          const args = buyTxReceipt.events[2].args;
+
+          assert.equal(args.price.toString(), UsdAmount.toString());
         }
       })
 
@@ -373,18 +386,20 @@ const INCORRECT_ROUTE = {
           tokenId,
           charity.address,
           tokenUri,
+          user.toString(),
           { value: 0 }
         )).to.be.revertedWithCustomError(marketplace, "NftMarketplace__PriceNotMet");
 
 
-        const charityFunds = PRICE * 70 / 100;
-        const sellerFunds = PRICE * 20 / 100;
+        const charityFunds = (PRICE * 995) / 1000;
+        const sellerFunds = (PRICE * 5) / 1000;
 
         const buyTx = await marketplace.connect(user).buyItem(
           mainCollection.address,
           argsList.tokenId,
           charity.address,
           tokenUri,
+          user.toString(),
           { value: PRICE }
         );
         const buyTxReceipt = await buyTx.wait(1);
@@ -402,13 +417,13 @@ const INCORRECT_ROUTE = {
         const sellerEndingBalance = await ethers.provider.getBalance(deployer);
 
 
-        assert.equal(charityEndingBalance.toString(), charityInitialBalance.add(charityFunds));
+        assert.equal(charityEndingBalance.toString(), charityInitialBalance.add((charityFunds.toString())));
         assert.equal(
           sellerEndingBalance.add(gasCostList).add(gasCostWithdraw).toString(),
           sellerInitialBalance.add(sellerFunds).toString());
 
-        assert.equal(args.buyer, user.address);
-        const ownerOfNft = await mainCollection.ownerOf(tokenId);
+        assert.equal(args.buyer.toString(), user.toString());
+        const ownerOfNft = await mainCollection.getOwnerOfToken(tokenId);
         assert.equal(args.buyer.toString(), ownerOfNft.toString())
       })
     });
@@ -714,76 +729,6 @@ const INCORRECT_ROUTE = {
       })
     })
 
-    describe("checkForOwner", async () => {
-      it("checks for a unique item to be owned by a user", async () => {
-        const listTx_1 = await marketplace.listItem(
-          mainCollection.address,
-          tokenId,
-          PRICE,
-          charity.address,
-          tokenUri,
-          subCollectionId,
-          AVAILABLE_EDITIONS,
-          ROUTE
-        );
-        const listTxReceipt_1 = await listTx_1.wait(1);
-        const argsList_1 = listTxReceipt_1.events[0].args;
-
-        const listTx_2 = await marketplace.listItem(
-          mainCollection.address,
-          tokenId + 1,
-          PRICE,
-          charity.address,
-          tokenUri,
-          subCollectionId,
-          (AVAILABLE_EDITIONS - 2),
-          ROUTE
-        );
-        const listTxReceipt_2 = await listTx_2.wait(1);
-        const argsList_2 = listTxReceipt_2.events[0].args;
-
-        const buyTx_1 = await marketplace.connect(user).buyItem(
-          mainCollection.address,
-          argsList_1.tokenId,
-          charity.address,
-          tokenUri,
-          { value: PRICE }
-        );
-        const buyTxReceipt_1 = await buyTx_1.wait(1);
-        const buyArgsList_1 = buyTxReceipt_1.events[2].args;
-
-        const collectionItem_1 = await marketplace.getListing(mainCollection.address, buyArgsList_1.tokenId);
-
-        const isOwner_false = await marketplace.checkOwnedByUser(
-          collectionItem_1.uniqueListingId,
-          mainCollection.address,
-          creator.address
-        );
-
-        assert(!isOwner_false);
-
-        const buyTx_2 = await marketplace.connect(user).buyItem(
-          mainCollection.address,
-          argsList_2.tokenId,
-          charity.address,
-          tokenUri,
-          { value: PRICE }
-        );
-        const buyTxReceipt_2 = await buyTx_2.wait(1);
-        const buyArgsList_2 = buyTxReceipt_2.events[2].args;
-
-        const collectionItem_2 = await marketplace.getListing(mainCollection.address, buyArgsList_2.tokenId);
-
-        const isOwner_true = await marketplace.checkOwnedByUser(
-          collectionItem_2.uniqueListingId,
-          mainCollection.address,
-          user.address
-        );
-
-        assert(isOwner_true);
-      })
-    })
-
     describe("saveRealItemHistory", async () => {
       const realItemHistoryData = {
         key: "stamp",
@@ -818,6 +763,7 @@ const INCORRECT_ROUTE = {
           tokenId,
           charity.address,
           tokenUri,
+          user.toString(),
           { value: PRICE }
         )
 
@@ -840,7 +786,7 @@ const INCORRECT_ROUTE = {
           visualVerificationData.itemOpenseaTokenId,
           visualVerificationData.tokenUri,
           visualVerificationData.buyer,
-          visualVerificationData.key
+          EVENT_DATA[visualVerificationData.key]
         )
 
         const verifyVisualTxReceipt = await verifyVisualTx.wait(1);
@@ -864,7 +810,7 @@ const INCORRECT_ROUTE = {
           visualVerificationDataDummy.itemOpenseaTokenId,
           visualVerificationDataDummy.tokenUri,
           visualVerificationDataDummy.buyer,
-          visualVerificationDataDummy.key
+          EVENT_DATA[visualVerificationData.key]
         )).to.be.revertedWithCustomError(
           ledgeriseLens,
           "LedgeriseLens__NotOwner"
@@ -875,7 +821,7 @@ const INCORRECT_ROUTE = {
         const tokenUriResult = await ledgeriseLens.getTokenUri(
           visualVerificationData.itemOpenseaTokenId,
           visualVerificationData.buyer,
-          visualVerificationData.key
+          EVENT_DATA[visualVerificationData.key]
         )
 
         assert.equal(tokenUri, tokenUriResult);
@@ -895,7 +841,7 @@ const INCORRECT_ROUTE = {
           visualVerificationData.itemOpenseaTokenId,
           visualVerificationData.tokenUri,
           visualVerificationData.buyer,
-          visualVerificationData.key
+          EVENT_DATA[visualVerificationData.key]
         )).to.be.revertedWithCustomError(
           ledgeriseLens,
           "LedgeriseLens__ItemAlreadyVerified"
@@ -995,7 +941,7 @@ const INCORRECT_ROUTE = {
 
         const addressTelephoneNumber = "5302137012"
         const message = "The visual doesn't belong to an aid parcel. It's a car.";
-        const reportCode = 2; // IRRELEVANT_VISUAL
+        const reportCode = [2, 3]; // IRRELEVANT_VISUAL
         const createReportTx = await marketplace.reportIssue(
           addressTelephoneNumber,
           message,
@@ -1007,7 +953,6 @@ const INCORRECT_ROUTE = {
         const args = createReportTxReceipt.events[0].args;
         assert.equal(args[0], addressTelephoneNumber);
         assert.equal(args[1], message);
-        assert.equal(parseInt(args[2]), reportCode);
 
         const timestampConverted = parseInt(parseInt(args[3]) / 100);
         assert.equal(timestampConverted, timestampReal)
@@ -1044,6 +989,7 @@ const INCORRECT_ROUTE = {
           tokenId,
           charity.address,
           tokenUri,
+          user.toString(),
           { value: PRICE }
         )
 

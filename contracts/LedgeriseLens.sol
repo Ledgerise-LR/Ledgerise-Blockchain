@@ -14,14 +14,20 @@ contract LedgeriseLens is ERC721URIStorage {
   }
 
   event VisualNftMinted(
-    address indexed owner,
+    string owner,
     uint256 indexed tokenCounter,
     uint256 indexed openseaTokenId
   );
 
+  enum EventType {
+    STAMP,
+    SHIPPED,
+    DELIVERED
+  }
+
   address private immutable i_owner;
   uint256 public s_tokenCounter;
-  mapping(address => mapping(uint256 => mapping(string => ItemVisual))) s_buyerToIdToKeyToVisual;
+  mapping(string => mapping(uint256 => mapping(EventType => ItemVisual))) s_buyerToIdToKeyToVisual;
 
   constructor() ERC721('LedgeriseLens Visual Verification', 'LVV') {
     s_tokenCounter = 0;
@@ -38,21 +44,22 @@ contract LedgeriseLens is ERC721URIStorage {
   function mintVisualNft(
     uint256 itemOpenseaTokenId,
     string memory tokenUri,
-    address buyer,
-    string memory key
+    string memory buyer,
+    uint256 key
   ) external isOwner(msg.sender) {
     if (
-      bytes(s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][key].tokenUri)
-        .length > 0
+      bytes(
+        s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][EventType(key)]
+          .tokenUri
+      ).length > 0
     ) {
       revert LedgeriseLens__ItemAlreadyVerified();
     }
-    s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][key] = ItemVisual(
-      tokenUri,
-      s_tokenCounter
-    );
+    s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][
+      EventType(key)
+    ] = ItemVisual(tokenUri, s_tokenCounter);
 
-    _safeMint(buyer, s_tokenCounter);
+    _safeMint(i_owner, s_tokenCounter);
     _setTokenURI(s_tokenCounter, tokenUri);
 
     s_tokenCounter += 1;
@@ -62,10 +69,12 @@ contract LedgeriseLens is ERC721URIStorage {
 
   function getTokenUri(
     uint256 itemOpenseaTokenId,
-    address buyer,
-    string memory key
+    string memory buyer,
+    uint256 key
   ) public view returns (string memory) {
-    return s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][key].tokenUri;
+    return
+      s_buyerToIdToKeyToVisual[buyer][itemOpenseaTokenId][EventType(key)]
+        .tokenUri;
   }
 
   function getTokenCounter() public view returns (uint256) {

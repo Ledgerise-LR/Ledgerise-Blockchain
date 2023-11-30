@@ -26,7 +26,7 @@ contract MainCollection is ERC721URIStorage {
   );
 
   event NftMinted(
-    address indexed owner,
+    string indexed owner,
     uint256 indexed tokenCounter,
     uint256 indexed subcollectionId
   );
@@ -40,6 +40,7 @@ contract MainCollection is ERC721URIStorage {
   subcollection[] private s_subcollections;
   uint256 public s_subcollectionIdCounter;
   uint256 public s_tokenCounter;
+  mapping(uint256 => string) s_tokenIdToDonor;
 
   constructor(
     address allowedContract
@@ -72,13 +73,15 @@ contract MainCollection is ERC721URIStorage {
   function mintNft(
     uint256 subcollectionId,
     string memory tokenUri, // IPFS string
-    address creatorAddress
+    string memory creatorAddress
   ) external isSpenderAllowed(msg.sender) {
     s_tokenIdToSubcollection[s_tokenCounter] = s_subcollections[
       subcollectionId
     ];
 
-    _safeMint(creatorAddress, s_tokenCounter);
+    s_tokenIdToDonor[s_tokenCounter] = creatorAddress;
+
+    _safeMint(i_owner, s_tokenCounter);
     _setTokenURI(s_tokenCounter, tokenUri);
 
     s_tokenCounter += 1;
@@ -133,5 +136,11 @@ contract MainCollection is ERC721URIStorage {
     uint256 tokenId
   ) public view returns (uint256) {
     return s_tokenIdToSubcollection[tokenId].id;
+  }
+
+  function getOwnerOfToken(
+    uint256 tokenId
+  ) public view returns (string memory) {
+    return s_tokenIdToDonor[tokenId];
   }
 }

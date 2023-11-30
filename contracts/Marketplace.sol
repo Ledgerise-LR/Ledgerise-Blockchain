@@ -20,6 +20,7 @@ error NftMarketplace__NotOwner();
 error NftMarketplace__PriceNotMet(
   address nftAddress,
   uint256 tokenId,
+  uint256 pricePayed,
   uint256 price
 );
 error NftMarketplace__PriceNotMetFiat(
@@ -65,7 +66,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   struct RealItemHistory {
     string key;
-    address buyer;
+    string buyer;
     string date;
     uint256 openseaTokenId;
     Location location;
@@ -119,10 +120,10 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   );
 
   event ItemBought(
-    address indexed buyer,
+    string buyer /* 0x -> crypto, 0533 -> fiat */,
     address indexed nftAddress,
     uint256 indexed tokenId,
-    uint256 price,
+    uint256 indexed price,
     uint256 openseaTokenId
   );
 
@@ -305,11 +306,17 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address nftAddress,
     uint256 tokenId,
     address charityAddress,
-    string memory tokenUri
+    string memory tokenUri,
+    string memory ownerAddressString
   ) external payable nonReentrant isListed(nftAddress, tokenId) {
     Listing memory listedItem = s_listings[nftAddress][tokenId];
     if (msg.value < listedItem.price) {
-      revert NftMarketplace__PriceNotMet(nftAddress, tokenId, listedItem.price);
+      revert NftMarketplace__PriceNotMet(
+        nftAddress,
+        tokenId,
+        msg.value,
+        listedItem.price
+      );
     }
 
     if (listedItem.availableEditions <= 0) {
@@ -319,7 +326,11 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 subcollectionId = MainCollection(nftAddress)
       .getSubcollectionOfToken(tokenId);
 
-    MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, msg.sender);
+    MainCollection(nftAddress).mintNft(
+      subcollectionId,
+      tokenUri,
+      ownerAddressString
+    );
 
     uint256 charityFunds = ((msg.value) * 995) / 1000;
     uint256 sellerFunds = ((msg.value) * 5) / 1000;
@@ -339,7 +350,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 openseaTokenId = MainCollection(nftAddress).getTokenCounter();
 
     emit ItemBought(
-      msg.sender,
+      ownerAddressString,
       nftAddress,
       tokenId,
       listedItem.price,
@@ -354,7 +365,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     string memory tokenUri,
     AggregatorV3Interface priceFeed,
     uint256 fiatAmount,
-    address telephoneNumber /* 0x<phone-number> */
+    string memory donorId /* 0x<phone-number> */
   ) external nonReentrant isListed(nftAddress, tokenId) {
     /* Only for fiat currency payments: mastercard, visa, paypal etc.*/
 
@@ -371,11 +382,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 subcollectionId = MainCollection(nftAddress)
       .getSubcollectionOfToken(tokenId);
 
-    MainCollection(nftAddress).mintNft(
-      subcollectionId,
-      tokenUri,
-      telephoneNumber
-    );
+    MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, donorId);
 
     uint256 charityFunds = ((listedItem.price / 1e18) * 995) / 1000;
     uint256 sellerFunds = ((listedItem.price / 1e18) * 5) / 100;
@@ -390,13 +397,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     uint256 openseaTokenId = MainCollection(nftAddress).getTokenCounter();
 
-    emit ItemBought(
-      telephoneNumber,
-      nftAddress,
-      tokenId,
-      fiatAmount,
-      openseaTokenId
-    );
+    emit ItemBought(donorId, nftAddress, tokenId, fiatAmount, openseaTokenId);
   }
 
   function cancelItem(
@@ -516,7 +517,12 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   ) external payable nonReentrant {
     for (uint i = 0; i < s_auctions.length; i++) {
       if (msg.value <= s_auctions[i].currentBidding) {
-        revert NftMarketplace__PriceNotMet(nftAddress, tokenId, msg.value);
+        revert NftMarketplace__PriceNotMet(
+          nftAddress,
+          tokenId,
+          msg.value,
+          s_auctions[i].currentBidding
+        );
       }
       if (
         s_auctions[i].nftAddress == nftAddress &&
@@ -579,13 +585,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     MainCollection(endedAuction.nftAddress).mintAuction(
       endedAuction.tokenUri,
-      endedAuction.creator
-    );
-
-    MainCollection(endedAuction.nftAddress).safeTransferFrom(
-      endedAuction.seller,
-      endedAuction.currentBidder,
-      endedAuction.tokenId
+      endedAuction.currentBidder
     );
 
     emit AuctionCompleted(
@@ -618,7 +618,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     address nftAddress,
     uint256 tokenId,
     string memory key,
-    address buyer,
+    string memory buyer,
     string memory date,
     uint256 openseaTokenId,
     uint256 latitude,
@@ -739,26 +739,5 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   function getListTokenCounter() public view returns (uint256) {
     return s_listTokenCounter;
-  }
-
-  function checkOwnedByUser(
-    uint256 uniqueItemId,
-    address nftAddress,
-    address ownerAddress
-  ) public view returns (bool isOwned) {
-    for (uint i = 0; i < s_listTokenCounter; i++) {
-      Listing memory listing = s_listings[nftAddress][i];
-      try IERC721(nftAddress).ownerOf(i) returns (address /*owner*/) {
-        if (
-          listing.uniqueListingId == uniqueItemId &&
-          IERC721(nftAddress).ownerOf(i) == ownerAddress
-        ) {
-          return true;
-        }
-      } catch (bytes memory /*lowLevelData*/) {
-        continue;
-      }
-    }
-    return false;
   }
 }
