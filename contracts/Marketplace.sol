@@ -460,15 +460,6 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     }
   }
 
-  function deleteWithdrawedFiatAmountFromCharityProceeds(
-    uint256 fiatAmount /* USD */,
-    address charityAddress
-  ) internal {
-    s_charity_fiat_proceeds[charityAddress] =
-      s_charity_fiat_proceeds[charityAddress] -
-      fiatAmount;
-  }
-
   // Auction functions
 
   function setAuction(
