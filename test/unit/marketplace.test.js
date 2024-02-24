@@ -255,7 +255,7 @@ const INCORRECT_ROUTE = {
           marketplace,
           "NftMarketplace__ItemNotAvailable"
         );
-      })
+      });
 
       it("reverts when USD value insufficient", async () => {
 
@@ -405,7 +405,7 @@ const INCORRECT_ROUTE = {
         const buyTxReceipt = await buyTx.wait(1);
         const { gasUsed: gasUsedBuy, effectiveGasPrice: effectiveGasPriceBuy } = buyTxReceipt;
         const gasCostBuy = gasUsedBuy.mul(effectiveGasPriceBuy);
-        console.log("Gas cost for buy: " + ethers.utils.formatEther(gasCostBuy.toString(), "ether"))
+        // console.log("Gas cost for buy: " + ethers.utils.formatEther(gasCostBuy.toString(), "ether"))
         const args = buyTxReceipt.events[2].args;
 
         const withdrawTx = await marketplace.withdrawProceeds();
@@ -416,12 +416,14 @@ const INCORRECT_ROUTE = {
         const charityEndingBalance = await ethers.provider.getBalance(charity.address);
         const sellerEndingBalance = await ethers.provider.getBalance(deployer);
 
+        const tokenCounter = await mainCollection.getTokenCounter();
 
         assert.equal(charityEndingBalance.toString(), charityInitialBalance.add((charityFunds.toString())));
         assert.equal(
           sellerEndingBalance.add(gasCostList).add(gasCostWithdraw).toString(),
           sellerInitialBalance.add(sellerFunds).toString());
 
+        assert.equal(parseInt(tokenCounter), parseInt(args.openseaTokenId));
         assert.equal(args.buyer.toString(), user.toString());
         const ownerOfNft = await mainCollection.getOwnerOfToken(tokenId);
         assert.equal(args.buyer.toString(), ownerOfNft.toString())

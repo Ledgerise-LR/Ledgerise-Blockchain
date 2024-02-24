@@ -363,7 +363,6 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 tokenId,
     address charityAddress,
     string memory tokenUri,
-    AggregatorV3Interface priceFeed,
     uint256 fiatAmount,
     string memory donorId /* 0x<phone-number> */
   ) external nonReentrant isListed(nftAddress, tokenId) {
@@ -371,12 +370,17 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     Listing memory listedItem = s_listings[nftAddress][tokenId];
 
-    if (fiatAmount < listedItem.price.getConversionRate(priceFeed)) {
-      revert NftMarketplace__PriceNotMetFiat(nftAddress, tokenId, fiatAmount);
-    }
-
     if (listedItem.availableEditions <= 0) {
       revert NftMarketplace__ItemNotAvailable();
+    }
+
+    if (fiatAmount < listedItem.price) {
+      revert NftMarketplace__PriceNotMet(
+        nftAddress,
+        tokenId,
+        fiatAmount,
+        listedItem.price
+      );
     }
 
     uint256 subcollectionId = MainCollection(nftAddress)
@@ -384,8 +388,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
     MainCollection(nftAddress).mintNft(subcollectionId, tokenUri, donorId);
 
-    uint256 charityFunds = ((listedItem.price / 1e18) * 995) / 1000;
-    uint256 sellerFunds = ((listedItem.price / 1e18) * 5) / 100;
+    uint256 charityFunds = (listedItem.price * 995) / 1000;
+    uint256 sellerFunds = (listedItem.price * 5) / 100;
 
     s_listings[nftAddress][tokenId].availableEditions -= 1;
 
