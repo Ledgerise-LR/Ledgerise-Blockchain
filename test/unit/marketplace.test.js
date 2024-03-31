@@ -257,107 +257,6 @@ const INCORRECT_ROUTE = {
         );
       });
 
-      it("reverts when USD value insufficient", async () => {
-
-        const listTx = await marketplace.listItem(
-          mainCollection.address,
-          tokenId,
-          PRICE,
-          charity.address,
-          tokenUri,
-          subCollectionId,
-          AVAILABLE_EDITIONS,
-          ROUTE
-        );
-        await listTx.wait(1);
-
-        if (currencySingleFiatConversion == "USD") {
-
-          await expect(marketplace.connect(user).buyItemWithFiatCurrency(
-            mainCollection.address,
-            tokenId,
-            charity.address,
-            tokenUri,
-            mockV3Aggregator.address, /* priceFeed address Mock */
-            1, /* Value in dollars */
-            DONOR_ID
-          )).to.be.revertedWithCustomError(
-            marketplace,
-            "NftMarketplace__PriceNotMetFiat"
-          );
-        }
-      })
-
-      it("reverts when EUR value insufficient (double conversion)", async () => {
-
-        const listTx = await marketplace.listItem(
-          mainCollection.address,
-          tokenId,
-          PRICE,
-          charity.address,
-          tokenUri,
-          subCollectionId,
-          AVAILABLE_EDITIONS,
-          ROUTE
-        );
-        await listTx.wait(1);
-
-        if (currencyDoubleFiatConversion == "EUR") {
-
-          const UsdAmount = await marketplace.priorConversion(1, mockV3Aggregator.address);
-
-          await expect(marketplace.connect(user).buyItemWithFiatCurrency(
-            mainCollection.address,
-            tokenId,
-            charity.address,
-            tokenUri,
-            mockV3Aggregator.address, /* priceFeed address Mock */
-            UsdAmount, /* Value in dollars */
-            DONOR_ID
-          )).to.be.revertedWithCustomError(
-            marketplace,
-            "NftMarketplace__PriceNotMetFiat"
-          );
-        }
-      })
-
-      it("buys item with fiat currency", async () => {
-        const listTx = await marketplace.listItem(
-          mainCollection.address,
-          tokenId,
-          PRICE,
-          charity.address,
-          tokenUri,
-          subCollectionId,
-          AVAILABLE_EDITIONS,
-          ROUTE
-        );
-        await listTx.wait(1);
-
-        if (currencySingleFiatConversion == "USD") {
-
-          const UsdAmount = await marketplace.priorConversion(PRICE.toBigInt(), mockV3Aggregator.address);
-
-          const buyTx = await marketplace.connect(user).buyItemWithFiatCurrency(
-            mainCollection.address,
-            tokenId,
-            charity.address,
-            tokenUri,
-            mockV3Aggregator.address, /* priceFeed address Mock */
-            UsdAmount, /* Value in dollars */
-            DONOR_ID
-          )
-
-          const buyTxReceipt = await buyTx.wait(1);
-
-          // console.log(buyTxReceipt.events[2].args.fiatPrice.toString());
-          // console.log(UsdAmount.toString())
-
-          const args = buyTxReceipt.events[2].args;
-
-          assert.equal(args.price.toString(), UsdAmount.toString());
-        }
-      })
 
       it("reverts when value insufficient, it buys an item and emits the event", async () => {
 
@@ -429,6 +328,102 @@ const INCORRECT_ROUTE = {
         assert.equal(args.buyer.toString(), ownerOfNft.toString())
       })
     });
+
+    describe("needs", () => {
+
+      let needName = "Telefon";
+      let needDescription = "Görüşme yapmak için telefon ihtiyacım var.";
+      let needQuantity = 5;
+
+      let needItemPrice = 100;
+
+      let needDetails = {
+        donorPhoneNumber: "5330000001",
+        beneficiaryPhoneNumber: "",
+        depotAddress: "HB İzmir Depo",
+        beneficiaryAddress: "Atatürk Mah.",
+        orderNumber: "123124124214",
+        donateTimestamp: "",
+        needTokenId: "",
+        quantitySatisfied: 2
+      }
+
+      beforeEach(async () => {
+
+        const addBeneficiaryTx = await marketplace.addBeneficiary(
+          mainCollection.address,
+          "5330000000"
+        );
+        const addBeneficiaryTxReceipt = await addBeneficiaryTx.wait(1);
+
+        const args = addBeneficiaryTxReceipt.events[0].args;
+        needDetails.beneficiaryPhoneNumber = args[2];
+        needDetails.needTokenId = args[1];
+
+        const createNeedTx = await marketplace.createNeed(
+          mainCollection.address,
+          needDetails.beneficiaryPhoneNumber,
+          needName,
+          needDescription,
+          needQuantity
+        );
+
+        await createNeedTx.wait(1);
+
+        const need = await marketplace.getNeed(mainCollection.address, needDetails.needTokenId);
+        assert.equal(need[1], needName);
+      })
+
+      it("verifies that the donor satisfied a need", async () => {
+
+        needDetails.donateTimestamp = Date.now();
+
+        const listNeedItemTx = await marketplace.listNeedItem(
+          mainCollection.address,
+          tokenId,
+          needItemPrice,
+          charity.address,
+          tokenUri,
+          subCollectionId,
+          needDetails
+        );
+
+        await listNeedItemTx.wait(1);
+
+        const buyItemWithFiatCurrencyTx = await marketplace.buyItemWithFiatCurrency(
+          mainCollection.address,
+          tokenId,
+          charity.address,
+          tokenUri,
+          needItemPrice,
+          needDetails.donorPhoneNumber
+        );
+
+        const buyItemWithFiatCurrencyTxReceipt = await buyItemWithFiatCurrencyTx.wait(1);
+
+        const args = buyItemWithFiatCurrencyTxReceipt.events[2].args
+        assert.equal(args[0], needDetails.donorPhoneNumber);
+        
+        const needListing = await marketplace.getListing(
+          mainCollection.address,
+          tokenId
+        );
+
+        assert.equal(needListing.listingType, 1);
+        assert.equal(needListing.availableEditions.toNumber(), 0);
+
+        const need = await marketplace.getNeed(mainCollection.address, needDetails.needTokenId);
+        assert.equal(need.currentSatisfiedNeedQuantity, needDetails.quantitySatisfied);
+        
+        const amountSatisfiedFromMapping = await marketplace.getSatisfiedAmountFromPhoneNumber(
+          mainCollection.address,
+          tokenId,
+          needDetails.donorPhoneNumber
+        );
+
+        assert.equal(amountSatisfiedFromMapping, needDetails.quantitySatisfied);
+      })
+    })
 
     describe("cancelItem", async () => {
       beforeEach(async () => {

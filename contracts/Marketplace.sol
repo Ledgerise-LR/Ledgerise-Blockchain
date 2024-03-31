@@ -41,6 +41,23 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
   using PriceConverter for uint256;
 
   // Type declarations
+
+  enum ListingType {
+    ACTIVE_ITEM,
+    NEED_ITEM
+  }
+
+  struct NeedDetails {
+    string donorPhoneNumber;
+    string beneficiaryPhoneNumber;
+    string depotAddress;
+    string beneficiaryAddress;
+    string orderNumber;
+    uint256 donateTimestamp;
+    uint256 needTokenId;
+    uint256 quantitySatisfied;
+  }
+
   struct Listing {
     uint256 uniqueListingId;
     address seller;
@@ -50,6 +67,18 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 subcollectionId;
     uint256 availableEditions;
     Route route;
+    ListingType listingType;
+    NeedDetails needDetails;
+  }
+
+  struct Need {
+    uint256 uniqueNeedId;
+    string name; /* computer, phone... */
+    string description;
+    uint256 quantity;
+    string beneficiaryPhoneNumber;
+    uint256 timestamp;
+    uint256 currentSatisfiedNeedQuantity;
   }
 
   struct Route {
@@ -161,6 +190,22 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   event CreatorAdded(address indexed creatorAddress);
 
+  event BeneficiaryCreated(
+    address indexed nftAddress,
+    uint256 indexed beneficiaryTokenId,
+    string phoneNumber
+  );
+
+  event NeedCreated(
+    address indexed nftAddress,
+    uint256 indexed needTokenId
+  );
+
+  event NeedSatisfied(
+    address indexed nftAddress,
+    uint256 indexed needTokenId
+  );
+
   event RealItemHistorySaved(
     address indexed nftAddress,
     uint256 indexed tokenId
@@ -175,13 +220,18 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   // NFT variables
   mapping(address => mapping(uint256 => Listing)) public s_listings;
+  mapping (address => mapping (uint256 => Need)) s_needs;
+  mapping (address => mapping (uint256 => string)) s_beneficiaries;
   mapping(address => uint256) public s_proceeds;
   mapping(address => uint256) s_charity_fiat_proceeds;
   mapping(address => mapping(uint256 => RealItemHistory[])) s_realItemHistory;
   Auction[] public s_auctions;
   mapping(address => bool) public s_creators;
   uint256 private s_listTokenCounter = 0;
+  uint256 private s_needTokenCounter = 0;
+  uint256 private s_beneficiaryTokenCounter = 0;
   Report[] public s_reports;
+  mapping (address => mapping (uint256 => mapping (string => uint256))) s_satisfiedNeeds;
 
   // modifiers
 
@@ -284,7 +334,9 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       msg.sender,
       subCollectionId,
       availableEditions,
-      route
+      route,
+      ListingType(0),
+      NeedDetails("", "", "", "", "", 0, 0, 0)
     );
 
     s_listTokenCounter += 1;
@@ -301,6 +353,55 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       route
     );
   }
+
+
+  function listNeedItem(
+    address nftAddress,
+    uint256 tokenId,
+    uint256 price,
+    address charityAddress,
+    string memory tokenUri,
+    uint256 subCollectionId,
+    NeedDetails memory needDetails
+  ) external notListed(nftAddress, tokenId, msg.sender) isCreator(msg.sender) {
+    if (price <= 0) {
+      revert NftMarketplace__PriceMustBeAboveZero();
+    }
+
+     Listing memory listing = Listing(
+      s_listTokenCounter,
+      msg.sender,
+      price,
+      charityAddress,
+      msg.sender,
+      subCollectionId,
+      1,
+      Route(Location(0, 0, 0), Location(0, 0, 0), Location(0, 0, 0)), /* This will be zero since other approach is implemented */
+      ListingType(1),
+      needDetails
+    );
+
+    s_needs[nftAddress][needDetails.needTokenId].currentSatisfiedNeedQuantity += needDetails.quantitySatisfied;
+
+    s_listings[nftAddress][tokenId] = listing;
+
+    s_satisfiedNeeds[nftAddress][needDetails.needTokenId][needDetails.donorPhoneNumber] = needDetails.quantitySatisfied;
+
+    s_listTokenCounter += 1;
+
+    emit ItemListed(
+      msg.sender,
+      nftAddress,
+      tokenId,
+      charityAddress,
+      price,
+      tokenUri,
+      subCollectionId,
+      1,
+      Route(Location(0, 0, 0), Location(0, 0, 0), Location(0, 0, 0))
+    );
+  }
+
 
   function buyItem(
     address nftAddress,
@@ -437,17 +538,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       .availableEditions;
     Route memory route = s_listings[nftAddress][tokenId].route;
 
-    emit ItemListed(
-      msg.sender,
-      nftAddress,
-      tokenId,
-      charityAddress,
-      price,
-      tokenUri,
-      subcollectionId,
-      availableEditions,
-      route
-    );
+    emit ItemListed(msg.sender,nftAddress,tokenId,charityAddress,price,tokenUri,subcollectionId,availableEditions,route);
   }
 
   function withdrawProceeds() external {
@@ -689,6 +780,41 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     emit ReportCreated(reporter, message, reportCodes, timestamp);
   }
 
+
+  function addBeneficiary(
+    address nftAddress,
+    string memory phoneNumber
+  ) external onlyOwner {
+    s_beneficiaries[nftAddress][s_beneficiaryTokenCounter] = phoneNumber;
+    s_beneficiaryTokenCounter += 1;
+
+    emit BeneficiaryCreated(nftAddress, (s_beneficiaryTokenCounter - 1), phoneNumber);
+  }
+
+
+  function createNeed(
+    address nftAddress,
+    string memory beneficiaryPhoneNumber,
+    string memory name,
+    string memory description,
+    uint256 quantity
+  ) external onlyOwner {
+    s_needs[nftAddress][s_needTokenCounter] = Need(
+      s_needTokenCounter,
+      name,
+      description,
+      quantity,
+      beneficiaryPhoneNumber,
+      block.timestamp,
+      0
+    );
+
+    s_needTokenCounter += 1;
+
+    emit NeedCreated(nftAddress, (s_needTokenCounter - 1));
+  }
+
+
   function priorConversion(
     uint256 amount,
     AggregatorV3Interface priceFeed
@@ -734,5 +860,13 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   function getListTokenCounter() public view returns (uint256) {
     return s_listTokenCounter;
+  }
+
+  function getNeed(address nftAddress, uint256 needTokenId) external view returns (Need memory) {
+    return s_needs[nftAddress][needTokenId];
+  }
+
+  function getSatisfiedAmountFromPhoneNumber(address nftAddress, uint256 needTokenId, string memory donorPhoneNumber) external view returns(uint256) {
+    return s_satisfiedNeeds[nftAddress][needTokenId][donorPhoneNumber];
   }
 }
