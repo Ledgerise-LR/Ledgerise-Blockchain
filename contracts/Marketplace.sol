@@ -37,7 +37,7 @@ error NftMarketplace__LocationFormatIncorrect();
 error NftMarketplace__RouteFormatIncorrect();
 error NftMarketplace__DuplicateRealItemEvent();
 
-contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
+contract Marketplace is /*KeeperCompatibleInterface,*/ ReentrancyGuard, Ownable {
   using PriceConverter for uint256;
 
   // Type declarations
@@ -79,6 +79,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     string beneficiaryPhoneNumber;
     uint256 timestamp;
     uint256 currentSatisfiedNeedQuantity;
+    Location location;
   }
 
   struct Route {
@@ -361,7 +362,6 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     uint256 price,
     address charityAddress,
     string memory tokenUri,
-    uint256 subCollectionId,
     NeedDetails memory needDetails
   ) external notListed(nftAddress, tokenId, msg.sender) isCreator(msg.sender) {
     if (price <= 0) {
@@ -374,7 +374,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       price,
       charityAddress,
       msg.sender,
-      subCollectionId,
+      0,
       1,
       Route(Location(0, 0, 0), Location(0, 0, 0), Location(0, 0, 0)), /* This will be zero since other approach is implemented */
       ListingType(1),
@@ -396,7 +396,7 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       charityAddress,
       price,
       tokenUri,
-      subCollectionId,
+      0,
       1,
       Route(Location(0, 0, 0), Location(0, 0, 0), Location(0, 0, 0))
     );
@@ -632,56 +632,56 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
 
   // Keeper functions for auctions
 
-  function checkUpkeep(
-    bytes memory // checkData
-  ) external override returns (bool upkeepNeeded, bytes memory performData) {
-    for (uint i = 0; i < s_auctions.length; i++) {
-      Auction memory auction = s_auctions[i];
+  // function checkUpkeep(
+  //   bytes memory // checkData
+  // ) external override returns (bool upkeepNeeded, bytes memory performData) {
+  //   for (uint i = 0; i < s_auctions.length; i++) {
+  //     Auction memory auction = s_auctions[i];
 
-      // time satisfied
-      // includes current bidder
-      performData = abi.encodePacked(uint256(i));
-      upkeepNeeded = (((block.timestamp - auction.startTimeStamp) >
-        auction.interval) && (auction.currentBidder != address(0)));
-      if (upkeepNeeded) {
-        s_auctions[i].state = AuctionState.ENDED;
-        return (upkeepNeeded, performData);
-      }
-    }
-  }
+  //     // time satisfied
+  //     // includes current bidder
+  //     performData = abi.encodePacked(uint256(i));
+  //     upkeepNeeded = (((block.timestamp - auction.startTimeStamp) >
+  //       auction.interval) && (auction.currentBidder != address(0)));
+  //     if (upkeepNeeded) {
+  //       s_auctions[i].state = AuctionState.ENDED;
+  //       return (upkeepNeeded, performData);
+  //     }
+  //   }
+  // }
 
-  function performUpkeep(bytes calldata performData) external override {
-    uint256 auctionIndex = abi.decode(performData, (uint256));
+  // function performUpkeep(bytes calldata performData) external override {
+  //   uint256 auctionIndex = abi.decode(performData, (uint256));
 
-    Auction memory endedAuction = s_auctions[auctionIndex];
-    delete s_auctions[auctionIndex];
+  //   Auction memory endedAuction = s_auctions[auctionIndex];
+  //   delete s_auctions[auctionIndex];
 
-    uint256 sellerFunds = (endedAuction.currentBidding * 25) / 100;
-    uint256 charityFunds = (endedAuction.currentBidding * 65) / 100;
+  //   uint256 sellerFunds = (endedAuction.currentBidding * 25) / 100;
+  //   uint256 charityFunds = (endedAuction.currentBidding * 65) / 100;
 
-    s_proceeds[endedAuction.seller] += sellerFunds;
+  //   s_proceeds[endedAuction.seller] += sellerFunds;
 
-    (bool successCharity, ) = payable(endedAuction.charityAddress).call{
-      value: charityFunds
-    }('');
+  //   (bool successCharity, ) = payable(endedAuction.charityAddress).call{
+  //     value: charityFunds
+  //   }('');
 
-    if (!successCharity) {
-      revert NftMarketplace__TransferFailed();
-    }
+  //   if (!successCharity) {
+  //     revert NftMarketplace__TransferFailed();
+  //   }
 
-    MainCollection(endedAuction.nftAddress).mintAuction(
-      endedAuction.tokenUri,
-      endedAuction.currentBidder
-    );
+  //   MainCollection(endedAuction.nftAddress).mintAuction(
+  //     endedAuction.tokenUri,
+  //     endedAuction.currentBidder
+  //   );
 
-    emit AuctionCompleted(
-      endedAuction.currentBidder,
-      endedAuction.seller,
-      endedAuction.nftAddress,
-      endedAuction.tokenId,
-      endedAuction.currentBidding
-    );
-  }
+  //   emit AuctionCompleted(
+  //     endedAuction.currentBidder,
+  //     endedAuction.seller,
+  //     endedAuction.nftAddress,
+  //     endedAuction.tokenId,
+  //     endedAuction.currentBidding
+  //   );
+  // }
 
   function getNumOfDigits(uint256 num) internal pure returns (uint256) {
     uint8 i = 0;
@@ -797,7 +797,9 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
     string memory beneficiaryPhoneNumber,
     string memory name,
     string memory description,
-    uint256 quantity
+    uint256 quantity,
+    uint256 latitude,
+    uint256 longitude
   ) external onlyOwner {
     s_needs[nftAddress][s_needTokenCounter] = Need(
       s_needTokenCounter,
@@ -806,7 +808,8 @@ contract Marketplace is KeeperCompatibleInterface, ReentrancyGuard, Ownable {
       quantity,
       beneficiaryPhoneNumber,
       block.timestamp,
-      0
+      0,
+      Location(latitude, longitude, 3)
     );
 
     s_needTokenCounter += 1;

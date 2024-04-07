@@ -15,6 +15,7 @@ const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "key";
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || "key";
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || "https://eth-sepolia";
 const MUMBAI_RPC_URL = process.env.MUMBAI_RPC_URL || "https://polygon-mumbai";
+const AMOY_RPC_URL = process.env.AMOY_RPC_URL || "https://polygon-amoy";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -53,7 +54,7 @@ module.exports = {
       url: GOERLI_RPC_URL,
       accounts: [PRIVATE_KEY],
       chainId: 5,
-      blockConfirmations: 6,
+      blockConfirmations: 6
     },
     sepolia: {
       url: SEPOLIA_RPC_URL,
@@ -65,10 +66,18 @@ module.exports = {
       url: MUMBAI_RPC_URL,
       accounts: [PRIVATE_KEY],
       chainId: 80001,
+      blockConfirmations: 6,
+      allowUnlimitedContractSize: true
+    },
+    amoy: {
+      url: AMOY_RPC_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 80002,
       blockConfirmations: 6
     },
     localhost: {
       chainId: 31337,
+      allowUnlimitedContractSize: true
     }
   },
   gasReporter: {

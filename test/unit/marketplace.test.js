@@ -360,17 +360,24 @@ const INCORRECT_ROUTE = {
         needDetails.beneficiaryPhoneNumber = args[2];
         needDetails.needTokenId = args[1];
 
+
         const createNeedTx = await marketplace.createNeed(
           mainCollection.address,
           needDetails.beneficiaryPhoneNumber,
           needName,
           needDescription,
-          needQuantity
+          needQuantity,
+          LOCATION.latitude,
+          LOCATION.longitude
         );
 
-        await createNeedTx.wait(1);
+        const createNeedTxReceipt = await createNeedTx.wait(1);
+
+        const needArgs = createNeedTxReceipt.events[0].args;
 
         const need = await marketplace.getNeed(mainCollection.address, needDetails.needTokenId);
+
+        assert.equal(need[0], needArgs.needTokenId.toNumber());
         assert.equal(need[1], needName);
       })
 
@@ -384,7 +391,6 @@ const INCORRECT_ROUTE = {
           needItemPrice,
           charity.address,
           tokenUri,
-          subCollectionId,
           needDetails
         );
 
@@ -403,7 +409,7 @@ const INCORRECT_ROUTE = {
 
         const args = buyItemWithFiatCurrencyTxReceipt.events[2].args
         assert.equal(args[0], needDetails.donorPhoneNumber);
-        
+
         const needListing = await marketplace.getListing(
           mainCollection.address,
           tokenId
