@@ -3,12 +3,12 @@ pragma solidity ^0.8.7;
 
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
-import '@chainlink/contracts/src/v0.8/KeeperCompatible.sol';
+// import '@chainlink/contracts/src/v0.8/KeeperCompatible.sol';
 import './MainCollection.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+// import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
-import './utils/PriceConverter.sol';
+// import './utils/PriceConverter.sol';
 
 // Errors
 
@@ -38,7 +38,7 @@ error NftMarketplace__RouteFormatIncorrect();
 error NftMarketplace__DuplicateRealItemEvent();
 
 contract Marketplace is /*KeeperCompatibleInterface,*/ ReentrancyGuard, Ownable {
-  using PriceConverter for uint256;
+  // using PriceConverter for uint256;
 
   // Type declarations
 
@@ -818,12 +818,12 @@ contract Marketplace is /*KeeperCompatibleInterface,*/ ReentrancyGuard, Ownable 
   }
 
 
-  function priorConversion(
-    uint256 amount,
-    AggregatorV3Interface priceFeed
-  ) external view returns (uint256) {
-    return amount.getConversionRateFiatToFiat(priceFeed);
-  }
+  // function priorConversion(
+  //   uint256 amount,
+  //   AggregatorV3Interface priceFeed
+  // ) external view returns (uint256) {
+  //   return amount.getConversionRateFiatToFiat(priceFeed);
+  // }
 
   function getRealItemHistory(
     address nftAddress,

@@ -16,6 +16,9 @@ const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || "key";
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || "https://eth-sepolia";
 const MUMBAI_RPC_URL = process.env.MUMBAI_RPC_URL || "https://polygon-mumbai";
 const AMOY_RPC_URL = process.env.AMOY_RPC_URL || "https://polygon-amoy";
+const CARDONA_API_URL = process.env.CARDONA_API_URL || "https://polygon-cardona"
+const CARDONA_API_KEY = process.env.CARDONA_API_KEY || "key"
+const AMOY_API_KEY = process.env.AMOY_API_KEY || "key";
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -30,6 +33,8 @@ module.exports = {
           }
         }
       },
+      { version: "0.8.0" },
+      { version: "0.8.1" },
       { version: "0.6.6" }
     ]
   },
@@ -38,8 +43,28 @@ module.exports = {
     apiKey: {
       goerli: ETHERSCAN_API_KEY,
       sepolia: ETHERSCAN_API_KEY,
+      cardona: CARDONA_API_KEY,
+      amoy: POLYGONSCAN_API_KEY,
       polygonMumbai: POLYGONSCAN_API_KEY
-    }
+    },
+    customChains: [
+      {
+        network: "cardona",
+        chainId: 2442,
+        urls: {
+          apiURL: `https://api-cardona-zkevm.polygonscan.com/api`,
+          browserURL: "https://cardona-zkevm.polygonscan.com/"
+        }
+      },
+      {
+        network: "amoy",
+        chainId: 80002,
+        urls: {
+          apiURL: `https://api-amoy.polygonscan.com/api`,
+          browserURL: "https://amoy.polygonscan.com/"
+        }
+      }
+    ]
   },
   namedAccounts: {
     deployer: {
@@ -73,6 +98,12 @@ module.exports = {
       url: AMOY_RPC_URL,
       accounts: [PRIVATE_KEY],
       chainId: 80002,
+      blockConfirmations: 6
+    },
+    cardona: {
+      url: CARDONA_API_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 2442,
       blockConfirmations: 6
     },
     localhost: {
