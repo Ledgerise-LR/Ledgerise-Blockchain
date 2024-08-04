@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: MIT
 
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
 import {Chainlink, ChainlinkClient} from "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
+import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 
 /**
@@ -12,168 +12,166 @@ import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/shared/interface
  */
 
 /**
- * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
- * THIS IS AN EXAMPLE CONTRACT THAT USES UN-AUDITED CODE.
- * DO NOT USE THIS CODE IN PRODUCTION.
+ * JOB IDs
+ * GET>bytes | 7da2702f37fd48e5b1b9a5715e3509b6 (for images)
+ * GET>string | 7d80a6386ef543a3abb52817f6707e3b 
+ * GET>uint256 | ca98366cc7314957b8c012c72f05aeeb 
+ * GET>boolean | c1c5e92880894eb6b27d3cae19670aa3 
  */
 
-/**
- * 
- * Chainlink token  0x779877A7B0D9E8603169DdbD7836e478b4624789
- * Chainlink oracle 0x6090149792dAAeE9D1D568c9f9a6F6B46AA29eFD
- */
-
-
-// Errors //
-
-error Entegrasyon__RequestAndCredentialsLengthNotSameError(uint256 difference);
-
-
-contract Entegrasyon is ChainlinkClient {
+contract Entegrasyon is ChainlinkClient, ConfirmedOwner {
     using Chainlink for Chainlink.Request;
 
-    // Events //
-
-    event RequestMultipleFulfilled(
-      bytes32 requestId,
-      uint256 response1,
-      uint256 response2,
-      uint256 response3
-    );
-
-
-    // Type declarations
-
-    struct Request {
-      string url; /** the request url */
-      string pathLabel; /** an identificator that distincts the path from others */
-      string path; /** path to the data */
-    }
-
-    struct ResponseBody {
-      uint256 response1;
-      uint256 response2;
-      uint256 response3;
-    }
-
-    struct ResponseHistory {
-      uint256 timestamp;
-      ResponseBody responseBody;
-    }
-
-    // Immutable variables
-
-    address immutable i_owner;
-    address immutable i_confirmedContract;
-
-
-    // Mutable variables
-
-    bytes32 private jobId;
     uint256 private fee;
 
-    string[] public s_urlLabels;
-    mapping (string => Request) s_urlLabelToRequestMapping;
-    mapping (bytes32 => ResponseHistory) s_requestIdToResponseHistoryMapping;
+    // Immutable Variables //
+    address immutable i_owner;
+    // address immutable i_confirmedContract;
+
+
+    // Events for each request //
+
+    event Request_1_Fulfilled(
+        bytes32 indexed requestId,
+        string response1
+    );
+
+    event Request_2_Fulfilled(
+        bytes32 indexed requestId,
+        string response2
+    );
+
+    event requestHistorySaved(
+      uint256 historyId
+    );
+
+    // Type Declarations //
+    struct ResponseHistory {
+      uint256 timestamp;
+      string response1;
+      string response2;
+    }
+
+    // Contract Variables //
+    uint256 public s_historyCounter;
+    mapping (uint256 => ResponseHistory) s_requestIdToResponseHistoryMapping;
+
+    /**
+     * Sepolia Testnet details:
+     * Link Token: 0x779877A7B0D9E8603169DdbD7836e478b4624789
+     * Oracle: 0x6090149792dAAeE9D1D568c9f9a6F6B46AA29eFD (Chainlink DevRel)	
+     */
 
     constructor(
-      address confirmedContract, 
       address chainlinkToken,
-      address chainlinkOracle,
-      string[] memory urlLabels,
-      Request[] memory requestObjects
-    ) {
-
-        if (urlLabels.length != requestObjects.length) {
-          revert Entegrasyon__RequestAndCredentialsLengthNotSameError(urlLabels.length - requestObjects.length);
-        }
-
+      address chainlinkOracle
+    ) ConfirmedOwner(msg.sender) {
         _setChainlinkToken(chainlinkToken);
         _setChainlinkOracle(chainlinkOracle);
 
-        jobId = "53f9755920cd451a8fe46f5087468395";
-        fee = (1 * LINK_DIVISIBILITY) / 10; // 0,1 * 10**18 (Varies by network and job)
-
         i_owner = msg.sender;
-        i_confirmedContract = confirmedContract;
 
-        s_urlLabels = urlLabels;
-        for (uint256 i = 0; i < urlLabels.length; i++) {
-
-          string memory urlLabel = urlLabels[i];
-          s_urlLabelToRequestMapping[urlLabel] = requestObjects[i];
-        }
-    }
-
-    function requestMultipleParameters
-    (
-      string[] memory urlLabels,
-      string[] memory queries /** e-devlet entegrasyonu için kimlik bilgileri */
-    ) external {
-
-        if (urlLabels.length != queries.length) {
-          revert Entegrasyon__RequestAndCredentialsLengthNotSameError(urlLabels.length - queries.length);
-        }
-
-        Chainlink.Request memory req = _buildChainlinkRequest(
-            jobId,
-            address(this),
-            this.fulfillMultipleParameters.selector
-        );
-
+        fee = (1 * LINK_DIVISIBILITY) / 10;
         
-        for (uint i = 0; i < urlLabels.length; i++) {
-          string memory urlLabel = urlLabels[i];
-          Request memory request = s_urlLabelToRequestMapping[urlLabel];
-          string memory query = queries[i];
-
-          req._add(
-            urlLabel,
-            string(abi.encodePacked(request.url, query))
-          );
-          req._add(
-            request.pathLabel,
-            request.path
-          );
-        }
-
-        _sendChainlinkRequest(req, fee); // MWR API.
-    }
-
-    /**
-     * @notice Fulfillment function for multiple parameters in a single request
-     * @dev This is called by the oracle. recordChainlinkFulfillment must be used.
-     */
-    function fulfillMultipleParameters(
-        bytes32 requestId,
-        uint256 response1,
-        uint256 response2,
-        uint256 response3
-    ) public recordChainlinkFulfillment(requestId) {
-        emit RequestMultipleFulfilled(
-            requestId,
-            response1,
-            response2,
-            response3
-        );
-        s_requestIdToResponseHistoryMapping[requestId] = ResponseHistory(
-          block.timestamp,
-          ResponseBody(response1, response2, response3)
-        );
+        s_historyCounter = 1;
     }
 
 
-    function getAllRequestLabels() public view returns (string[] memory) {
-      return s_urlLabels;
+    function requestAll(
+      string memory queryStringReq1, 
+      string memory queryStringReq2
+    ) public {
+
+      s_requestIdToResponseHistoryMapping[s_historyCounter] = ResponseHistory(
+        block.timestamp,
+        "pending",
+        "pending"
+      );
+
+      request1(queryStringReq1);
+      request2(queryStringReq2);
+
+      // s_historyCounter += 1;
+
+      // emit requestHistorySaved(
+      //   s_historyCounter - 1
+      // );
+    }
+
+
+    function request1(string memory queryString) public {   // path: numbers for array indices, slot names for objects
+
+      Chainlink.Request memory req = _buildChainlinkRequest("7d80a6386ef543a3abb52817f6707e3b", address(this), this.fulfillRequest1.selector);
+      
+      req._add(
+          "get",
+          string(abi.encodePacked("https://api.ledgerise.org/active-item/get-asset", queryString))
+      );
+      req._add("path", "activeItem,seller");
+
+      _sendChainlinkRequest(req, fee);
+    }
+
+    function fulfillRequest1(
+      bytes32 _requestId, 
+      string memory _response1
+    ) public recordChainlinkFulfillment(_requestId) {
+      s_requestIdToResponseHistoryMapping[s_historyCounter].response1 = _response1;
+      emit Request_1_Fulfilled(
+        _requestId,
+        _response1
+      );
     }
 
     
-    function getRequestFromLabel(string memory urlLabel) public view returns (Request memory) {
-      return s_urlLabelToRequestMapping[urlLabel];
+
+    function request2(string memory queryString) public {
+      Chainlink.Request memory req = _buildChainlinkRequest("7d80a6386ef543a3abb52817f6707e3b", address(this), this.fulfillRequest2.selector);
+      
+      req._add(
+          "get",
+          string(abi.encodePacked('https://api.ledgerise.org/active-item/get-asset', queryString))
+      );
+      req._add("path", "activeItem,tokenUri");
+
+      _sendChainlinkRequest(req, fee);
+    }
+
+    function fulfillRequest2(
+      bytes32 _requestId, 
+      string memory _response2
+    ) public recordChainlinkFulfillment(_requestId) {
+      s_requestIdToResponseHistoryMapping[s_historyCounter].response2 = _response2;
+      emit Request_2_Fulfilled(
+        _requestId,
+        _response2
+      );
+      
+      s_historyCounter += 1;
+      emit requestHistorySaved(
+        s_historyCounter - 1
+      );
+    }
+
+    /**
+     * Withdraw LINK tokens for reusability
+     */
+    function withdrawLink() public onlyOwner {
+        LinkTokenInterface link = LinkTokenInterface(_chainlinkTokenAddress());
+        require(
+            link.transfer(msg.sender, link.balanceOf(address(this))),
+            "Unable to transfer"
+        );
     }
 
 
-    function getResponseHistoryFromRequestId(bytes32 requestId) public view returns (ResponseHistory memory) {
-      return s_requestIdToResponseHistoryMapping[requestId];
+    // Get functions //
+
+    function getResponseHistoryFromHistoryId(uint256 historyId) public view returns(ResponseHistory memory) {
+      return s_requestIdToResponseHistoryMapping[historyId];
+    }
+
+    function getHistoryCounter() public view returns(uint256) {
+      return s_historyCounter;
     }
 }

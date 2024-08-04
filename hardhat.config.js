@@ -10,6 +10,7 @@ require("solidity-coverage")
 const GOERLI_RPC_URL = process.env.GOERLI_RPC_URL || "https://eth-goerli";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "0xkey";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "key";
+const ETHEREUM_ETHERSCAN_API_KEY = process.env.ETHEREUM_ETHERSCAN_API_KEY || "key";
 const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "key"
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || "key";
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || "key";
@@ -42,7 +43,7 @@ module.exports = {
   etherscan: {
     apiKey: {
       goerli: ETHERSCAN_API_KEY,
-      sepolia: ETHERSCAN_API_KEY,
+      sepolia: ETHEREUM_ETHERSCAN_API_KEY,
       cardona: CARDONA_API_KEY,
       amoy: POLYGONSCAN_API_KEY,
       polygonMumbai: POLYGONSCAN_API_KEY

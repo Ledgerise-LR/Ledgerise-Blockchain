@@ -11,27 +11,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   log("----------------------------------------------------")
   const arguments = [
-    "0x0000000000000000000000000000000000000000",
     "0x779877A7B0D9E8603169DdbD7836e478b4624789",
-    "0x6090149792dAAeE9D1D568c9f9a6F6B46AA29eFD",
-    ["urlBTC", "urlUSD", "urlEUR"],
-    [
-      {
-        url: "https://min-api.cryptocompare.com/data/price",
-        pathLabel: "pathBTC",
-        path: "BTC"
-      },
-      {
-        url: "https://min-api.cryptocompare.com/data/price",
-        pathLabel: "pathUSD",
-        path: "USD"
-      },
-      {
-        url: "https://min-api.cryptocompare.com/data/price",
-        pathLabel: "pathEUR",
-        path: "EUR"
-      },
-    ]
+    "0x6090149792dAAeE9D1D568c9f9a6F6B46AA29eFD"
   ];
   const entegrasyon = await deploy("Entegrasyon", {
     from: deployer,
@@ -40,7 +21,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     waitConfirmations: network.config.blockConfirmations || 1,
   })
 
-  if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
+  if (!developmentChains.includes(network.name) && process.env.ETHEREUM_ETHERSCAN_API_KEY) {
     await verify(entegrasyon.address, arguments);
   }
 

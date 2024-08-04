@@ -1,70 +1,52 @@
 
-const { expect } = require("chai");
+const { expect, assert } = require("chai");
 const { ethers, getNamedAccounts, network, deployments } = require("hardhat");
 const { developmentChains, networkConfig } = require("../../helper-hardhat-config");
 
-const ENTEGRASYON_SEPOLIA = "0xCcfec35F6Eef1ade6a255328a4a1bFCF3830DC6D";
+const ENTEGRASYON_SEPOLIA = "0xaF39B71dCE3bB0A5C7Eb4943Da88F562eb719d4F";
 
 developmentChains.includes(network.name)
   ? describe.skip()
   : describe("Entegrasyon", () => {
     
-    let entegrasyon, deployer, btcQuery, usdQuery, eurQuery;
+    let entegrasyon, deployer, query1, query2, query3;
 
     beforeEach(async () => {
       deployer = (await getNamedAccounts()).deployer;   
       entegrasyon = await ethers.getContract("Entegrasyon", deployer);
-      btcQuery = "?fsym=ETH&tsyms=BTC";
-      usdQuery = "?fsym=ETH&tsyms=USD";
-      eurQuery = "?fsym=ETH&tsyms=EUR";
+      queryString1 = "?tokenId=6&subcollectionId=4&nftAddress=0x992B8cF28fF160f18da15B3FC0d8C1952bf8F19f";
+      queryString2 = "?tokenId=6&subcollectionId=4&nftAddress=0x992B8cF28fF160f18da15B3FC0d8C1952bf8F19f";
     })
 
     describe("get mutliple api response data", () => {
 
-      let g_requestId, g_response1;
+      let historyCounter;
 
       it("calls api endpoints and returns responses", async () => {
         try {
-          await entegrasyon.requestMultipleParameters(["urlBTC", "urlUSD", "urlEUR"], [btcQuery, usdQuery, eurQuery]);  
+          await entegrasyon.requestAll(queryString1, queryString2);  
 
           await new Promise(async (resolve, reject) => {
             setTimeout(() => {
               reject();
             }, 30000);
-            entegrasyon.once("RequestMultipleFulfilled", async (
-              requestId,
-              response1,
-              response2,
-              response3
+            entegrasyon.once("requestHistorySaved", async (
+              _historyCounter
             ) => {
-
-              g_requestId = requestId;
-              g_response1 = response1;
-
+              historyCounter = parseInt(_historyCounter);
               resolve();
             })
           });
 
-          const requestHistory = await entegrasyon.getResponseHistoryFromRequestId(g_requestId);
-          assert.equal(requestHistory.response1, g_response1);
+          console.log(historyCounter);
 
+          const responseHistory = await entegrasyon.getResponseHistoryFromHistoryId(historyCounter);
+
+          console.log(responseHistory);
+          assert(historyCounter);
         } catch (error) {
           console.log(error)
         }
-      })
-    })
-
-    describe("get functions", () => {
-
-      it("gets the array of urlLabels", async function () {
-        const response = await entegrasyon.getAllRequestLabels();
-        expect(response[0]).to.be.equal("urlBTC");
-      })
-
-      it("gets the request object", async function () {
-        const response = await entegrasyon.getAllRequestLabels();
-        const request = await entegrasyon.getRequestFromLabel(response[0]);
-        expect(request.url).to.be.equal("https://min-api.cryptocompare.com/data/price");
       })
     })
   })
